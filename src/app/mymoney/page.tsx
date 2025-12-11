@@ -2,24 +2,46 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Image from 'next/image';
+import { auth } from '@/config/firebase';
+
+interface UserData {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL: string;
+  emailVerified: boolean;
+  providerId: string;
+}
 
 export default function MyMoneyPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UserData | null>(null);
 
   useEffect(() => {
-    // Verificar autenticación
-    const auth = localStorage.getItem('isAuthenticated');
-    if (!auth) {
+    // Verificar autenticación desde sessionStorage
+    const authStatus = sessionStorage.getItem('isAuthenticated');
+    const userData = sessionStorage.getItem('user');
+
+    if (!authStatus || !userData) {
       router.push('/auth/login');
-    } else {
-      setIsAuthenticated(true);
+      return;
     }
+
+    const parsedUser = JSON.parse(userData);
+    setUser(parsedUser);
+    setIsAuthenticated(true);
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+    sessionStorage.removeItem('isAuthenticated');
+    sessionStorage.removeItem('user');
     router.push('/home');
   };
 
@@ -32,9 +54,27 @@ export default function MyMoneyPage() {
       <header className='bg-white border-b' style={{ borderColor: '#5F72D9' }}>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4'>
           <div className='flex justify-between items-center'>
-            <h1 className='text-2xl font-bold' style={{ color: '#233ED9' }}>
-              MyMoney
-            </h1>
+            <div className='flex items-center gap-4'>
+              {user?.photoURL && (
+                <Image
+                  src={user.photoURL}
+                  alt={user.displayName || 'Usuario'}
+                  width={40}
+                  height={40}
+                  className='rounded-full'
+                />
+              )}
+              <div>
+                <h1 className='text-2xl font-bold' style={{ color: '#233ED9' }}>
+                  MyMoney
+                </h1>
+                {user?.displayName && (
+                  <p className='text-sm' style={{ color: '#666' }}>
+                    {user.displayName}
+                  </p>
+                )}
+              </div>
+            </div>
             <button
               onClick={handleLogout}
               className='px-4 py-2 text-sm font-medium transition-colors rounded-lg hover:bg-[#F2B56B] hover:text-white'

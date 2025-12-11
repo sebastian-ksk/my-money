@@ -13,13 +13,29 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const saveUserToSession = (user: firebase.User) => {
+    const userData = {
+      uid: user.uid,
+      email: user.email || '',
+      displayName: user.displayName || '',
+      photoURL: user.photoURL || '',
+      emailVerified: user.emailVerified,
+      providerId: user.providerData[0]?.providerId || 'password',
+    };
+    sessionStorage.setItem('user', JSON.stringify(userData));
+    sessionStorage.setItem('isAuthenticated', 'true');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await auth.signInWithEmailAndPassword(email, password);
+      const result = await auth.signInWithEmailAndPassword(email, password);
+      if (result.user) {
+        saveUserToSession(result.user);
+      }
       router.push('/mymoney');
     } catch (err) {
       const error = err as { message?: string };
@@ -35,7 +51,10 @@ export default function LoginPage() {
 
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
-      await auth.signInWithPopup(provider);
+      const result = await auth.signInWithPopup(provider);
+      if (result.user) {
+        saveUserToSession(result.user);
+      }
       router.push('/mymoney');
     } catch (err) {
       const error = err as { message?: string };
