@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { auth } from '@/config/firebase';
-import firebase from 'firebase/app';
+import { userService } from '@/services/Firebase/fireabase-user-service';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,15 +13,14 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const saveUserToSession = (user: firebase.User) => {
-    const userData = {
-      uid: user.uid,
-      email: user.email || '',
-      displayName: user.displayName || '',
-      photoURL: user.photoURL || '',
-      emailVerified: user.emailVerified,
-      providerId: user.providerData[0]?.providerId || 'password',
-    };
+  const saveUserToSession = (userData: {
+    uid: string;
+    email: string;
+    displayName?: string;
+    photoURL?: string;
+    emailVerified: boolean;
+    providerId: string;
+  }) => {
     sessionStorage.setItem('user', JSON.stringify(userData));
     sessionStorage.setItem('isAuthenticated', 'true');
   };
@@ -34,7 +33,8 @@ export default function RegisterPage() {
     try {
       const result = await auth.createUserWithEmailAndPassword(email, password);
       if (result.user) {
-        saveUserToSession(result.user);
+        const userData = await userService.findOrCreateUser(result.user);
+        saveUserToSession(userData);
       }
       router.push('/mymoney');
     } catch (err) {
