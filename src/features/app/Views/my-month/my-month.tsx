@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { firestore, firebase, auth } from '@/config/firebase-config';
+import { firestore, auth } from '@/config/firebase-config';
 import firebaseApp from 'firebase/app';
 
 interface Transaction {
@@ -52,12 +52,13 @@ const MyMonth = () => {
       const endTimestamp = firebaseApp.firestore.Timestamp.fromDate(endOfMonth);
 
       const transactionsRef = firestore.collection('transactions');
+      // Consulta sin orderBy para evitar necesidad de índice compuesto
+      // Ordenaremos en memoria después
       const querySnapshot = await transactionsRef
         .where('userId', '==', user.uid)
         .where('type', '==', 'out')
         .where('date', '>=', startTimestamp)
         .where('date', '<=', endTimestamp)
-        .orderBy('date', 'desc')
         .get();
 
       const transactionsData: Transaction[] = [];
@@ -66,6 +67,13 @@ const MyMonth = () => {
           id: doc.id,
           ...doc.data(),
         } as Transaction);
+      });
+
+      // Ordenar por fecha descendente si no se pudo hacer en la consulta
+      transactionsData.sort((a, b) => {
+        const dateA = a.date.toDate().getTime();
+        const dateB = b.date.toDate().getTime();
+        return dateB - dateA;
       });
 
       setTransactions(transactionsData);

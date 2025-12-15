@@ -18,18 +18,25 @@ export default function MyMoneyPage() {
   const [user, setUser] = useState<UserData | null>(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     // Verificar autenticación desde sessionStorage
-    const authStatus = sessionStorage.getItem('isAuthenticated');
-    const userData = sessionStorage.getItem('user');
+    try {
+      const authStatus = sessionStorage.getItem('isAuthenticated');
+      const userData = sessionStorage.getItem('user');
 
-    if (!authStatus || !userData) {
-      router.push('/auth/login');
-      return;
+      if (!authStatus || !userData) {
+        router.replace('/auth/login');
+        return;
+      }
+
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      router.replace('/auth/login');
     }
-
-    const parsedUser = JSON.parse(userData);
-    setUser(parsedUser);
-    setIsAuthenticated(true);
   }, [router]);
 
   if (!isAuthenticated) {
