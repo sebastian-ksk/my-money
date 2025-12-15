@@ -34,7 +34,32 @@ const MyMonth = () => {
     try {
       setLoading(true);
       const user = auth.currentUser;
-      if (!user) return;
+
+      if (!user) {
+        console.log('No hay usuario autenticado');
+        // Intentar obtener usuario de sessionStorage
+        const userData = sessionStorage.getItem('user');
+        if (!userData) {
+          setLoading(false);
+          return;
+        }
+        // Esperar un momento para que auth se inicialice
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const retryUser = auth.currentUser;
+        if (!retryUser) {
+          console.log('Usuario no disponible después de esperar');
+          setLoading(false);
+          return;
+        }
+      }
+
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
+      console.log('Cargando transacciones para usuario:', currentUser.uid);
 
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -47,29 +72,60 @@ const MyMonth = () => {
         59
       );
 
-      const startTimestamp =
-        firebaseApp.firestore.Timestamp.fromDate(startOfMonth);
-      const endTimestamp = firebaseApp.firestore.Timestamp.fromDate(endOfMonth);
+      console.log('Rango de fechas:', startOfMonth, 'a', endOfMonth);
 
       const transactionsRef = firestore.collection('transactions');
-      // Consulta sin orderBy para evitar necesidad de índice compuesto
-      // Ordenaremos en memoria después
+      // Consulta simplificada: solo por userId para evitar índices compuestos
+      // Filtraremos type y fecha en memoria
       const querySnapshot = await transactionsRef
-        .where('userId', '==', user.uid)
-        .where('type', '==', 'out')
-        .where('date', '>=', startTimestamp)
-        .where('date', '<=', endTimestamp)
+        .where('userId', '==', currentUser.uid)
         .get();
+
+      console.log('Total documentos encontrados:', querySnapshot.size);
 
       const transactionsData: Transaction[] = [];
       querySnapshot.forEach((doc) => {
-        transactionsData.push({
+        const data = doc.data();
+        const transaction = {
           id: doc.id,
-          ...doc.data(),
-        } as Transaction);
+          ...data,
+        } as Transaction;
+
+        console.log('Transacción encontrada:', {
+          id: transaction.id,
+          type: transaction.type,
+          date: transaction.date,
+          userId: transaction.userId,
+        });
+
+        // Filtrar por tipo 'out' y rango de fechas en memoria
+        if (transaction.type === 'out' && transaction.date) {
+          try {
+            const transactionDate = transaction.date.toDate();
+            if (
+              transactionDate >= startOfMonth &&
+              transactionDate <= endOfMonth
+            ) {
+              transactionsData.push(transaction);
+            } else {
+              console.log('Transacción fuera del rango:', transactionDate);
+            }
+          } catch (dateError) {
+            console.error('Error al convertir fecha:', dateError, transaction);
+          }
+        } else {
+          if (transaction.type !== 'out') {
+            console.log('Transacción no es tipo out:', transaction.type);
+          }
+          if (!transaction.date) {
+            console.log('Transacción sin fecha:', transaction);
+          }
+        }
       });
 
-      // Ordenar por fecha descendente si no se pudo hacer en la consulta
+      console.log('Transacciones filtradas:', transactionsData.length);
+
+      // Ordenar por fecha descendente
       transactionsData.sort((a, b) => {
         const dateA = a.date.toDate().getTime();
         const dateB = b.date.toDate().getTime();
