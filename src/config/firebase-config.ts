@@ -28,6 +28,7 @@ function initFirebase() {
     }
 
     authInstance = firebaseApp.auth();
+    // Firestore se conecta automáticamente a la base de datos default del proyecto
     firestoreInstance = firebaseApp.firestore();
     isInitialized = true;
   }
