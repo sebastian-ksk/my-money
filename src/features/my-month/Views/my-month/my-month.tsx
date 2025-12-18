@@ -219,126 +219,122 @@ const MyMonth = () => {
   ];
 
   return (
-    <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+    <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4'>
       <div className='bg-white rounded-lg shadow-lg p-8'>
-        <div className='flex justify-between items-center mb-6'>
-          <h2 className='text-3xl font-bold' style={{ color: '#233ED9' }}>
-            Mis Gastos - {months[selectedMonth]} {selectedYear}
-          </h2>
-          <Button
-            onClick={() => setShowModal(true)}
-            variant='secondary'
-            size='md'
-            icon={
-              <svg
-                className='w-5 h-5'
-                fill='none'
-                stroke='currentColor'
-                viewBox='0 0 24 24'
-              >
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M12 4v16m8-8H4'
-                />
-              </svg>
-            }
-          >
-            Crear Gasto
-          </Button>
-        </div>
-
         <MonthTabs
           selectedMonth={selectedMonth}
           selectedYear={selectedYear}
           onMonthChange={handleMonthChange}
-        />
-
-        {loading ? (
-          <div className='text-center py-12'>
-            <p style={{ color: '#666' }}>Cargando gastos...</p>
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className='text-center py-12'>
-            <p style={{ color: '#666' }}>
-              No hay gastos registrados en {months[selectedMonth]}{' '}
-              {selectedYear}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div
-              className='mb-6 p-4 rounded-lg'
-              style={{ backgroundColor: '#F2F2F2' }}
+        >
+          <div className='flex justify-between items-center mb-6'>
+            <Button
+              onClick={() => setShowModal(true)}
+              variant='secondary'
+              size='md'
+              icon={
+                <svg
+                  className='w-5 h-5'
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M12 4v16m8-8H4'
+                  />
+                </svg>
+              }
             >
-              <p className='text-sm' style={{ color: '#263DBF' }}>
-                Total de gastos del mes:
-              </p>
-              <p className='text-2xl font-bold' style={{ color: '#BF815E' }}>
-                {formatCurrency(totalExpenses)}
+              Crear Gasto
+            </Button>
+          </div>
+          {loading ? (
+            <div className='text-center py-12'>
+              <p style={{ color: '#666' }}>Cargando gastos...</p>
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className='text-center py-12'>
+              <p style={{ color: '#666' }}>
+                No hay gastos registrados en {months[selectedMonth]}{' '}
+                {selectedYear}
               </p>
             </div>
+          ) : (
+            <>
+              <div
+                className='mb-6 p-4 rounded-lg'
+                style={{ backgroundColor: '#F2F2F2' }}
+              >
+                <p className='text-sm' style={{ color: '#263DBF' }}>
+                  Total de gastos del mes:
+                </p>
+                <p className='text-2xl font-bold' style={{ color: '#BF815E' }}>
+                  {formatCurrency(totalExpenses)}
+                </p>
+              </div>
 
-            <div className='overflow-x-auto'>
-              <table className='w-full'>
-                <thead>
-                  <tr className='border-b' style={{ borderColor: '#E5E5E5' }}>
-                    <th
-                      className='text-left py-3 px-4 font-semibold'
-                      style={{ color: '#263DBF' }}
-                    >
-                      Fecha
-                    </th>
-                    <th
-                      className='text-left py-3 px-4 font-semibold'
-                      style={{ color: '#263DBF' }}
-                    >
-                      Concepto
-                    </th>
-                    <th
-                      className='text-left py-3 px-4 font-semibold'
-                      style={{ color: '#263DBF' }}
-                    >
-                      Medio de Pago
-                    </th>
-                    <th
-                      className='text-right py-3 px-4 font-semibold'
-                      style={{ color: '#263DBF' }}
-                    >
-                      Valor
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((transaction) => (
-                    <tr
-                      key={transaction.id}
-                      className='border-b hover:bg-neutral-light transition-colors'
-                      style={{ borderColor: '#E5E5E5' }}
-                    >
-                      <td className='py-3 px-4' style={{ color: '#666' }}>
-                        {formatDate(transaction.date)}
-                      </td>
-                      <td className='py-3 px-4' style={{ color: '#333' }}>
-                        {transaction.concept}
-                      </td>
-                      <td className='py-3 px-4' style={{ color: '#666' }}>
-                        {transaction.paymentMethod}
-                      </td>
-                      <td
-                        className='py-3 px-4 text-right font-semibold'
-                        style={{ color: '#BF815E' }}
+              <div className='overflow-x-auto'>
+                <table className='w-full'>
+                  <thead>
+                    <tr className='border-b' style={{ borderColor: '#E5E5E5' }}>
+                      <th
+                        className='text-left py-3 px-4 font-semibold'
+                        style={{ color: '#263DBF' }}
                       >
-                        {formatCurrency(transaction.value)}
-                      </td>
+                        Fecha
+                      </th>
+                      <th
+                        className='text-left py-3 px-4 font-semibold'
+                        style={{ color: '#263DBF' }}
+                      >
+                        Concepto
+                      </th>
+                      <th
+                        className='text-left py-3 px-4 font-semibold'
+                        style={{ color: '#263DBF' }}
+                      >
+                        Medio de Pago
+                      </th>
+                      <th
+                        className='text-right py-3 px-4 font-semibold'
+                        style={{ color: '#263DBF' }}
+                      >
+                        Valor
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+                  </thead>
+                  <tbody>
+                    {transactions.map((transaction) => (
+                      <tr
+                        key={transaction.id}
+                        className='border-b hover:bg-neutral-light transition-colors'
+                        style={{ borderColor: '#E5E5E5' }}
+                      >
+                        <td className='py-3 px-4' style={{ color: '#666' }}>
+                          {formatDate(transaction.date)}
+                        </td>
+                        <td className='py-3 px-4' style={{ color: '#333' }}>
+                          {transaction.concept}
+                        </td>
+                        <td className='py-3 px-4' style={{ color: '#666' }}>
+                          {transaction.paymentMethod}
+                        </td>
+                        <td
+                          className='py-3 px-4 text-right font-semibold'
+                          style={{ color: '#BF815E' }}
+                        >
+                          {formatCurrency(transaction.value)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </MonthTabs>
       </div>
 
       {/* Modal para crear gasto */}
