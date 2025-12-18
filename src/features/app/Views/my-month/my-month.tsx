@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { firestore, auth } from '@/config/firebase-config';
 import firebaseApp from 'firebase/app';
+import { Button } from '@/components/ui';
 
 interface Transaction {
   id: string;
@@ -194,13 +195,28 @@ const MyMonth = () => {
           <h2 className='text-3xl font-bold' style={{ color: '#233ED9' }}>
             Mis Gastos del Mes
           </h2>
-          <button
+          <Button
             onClick={() => setShowModal(true)}
-            className='px-4 py-2 bg-primary-light text-white rounded-lg hover:bg-primary-medium transition-colors font-medium'
-            style={{ backgroundColor: '#5F72D9' }}
+            variant='secondary'
+            size='md'
+            icon={
+              <svg
+                className='w-5 h-5'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M12 4v16m8-8H4'
+                />
+              </svg>
+            }
           >
-            + Crear Gasto
-          </button>
+            Crear Gasto
+          </Button>
         </div>
 
         {loading ? (
@@ -366,7 +382,7 @@ const MyMonth = () => {
               </div>
 
               <div className='flex gap-3'>
-                <button
+                <Button
                   type='button'
                   onClick={() => {
                     setShowModal(false);
@@ -376,21 +392,20 @@ const MyMonth = () => {
                       paymentMethod: 'efectivo',
                     });
                   }}
-                  className='flex-1 px-4 py-2 border rounded-lg font-medium transition-colors'
-                  style={{
-                    borderColor: '#E5E5E5',
-                    color: '#666',
-                  }}
+                  variant='outline'
+                  size='md'
+                  className='flex-1'
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type='submit'
-                  className='flex-1 px-4 py-2 rounded-lg font-medium text-white transition-colors'
-                  style={{ backgroundColor: '#5F72D9' }}
+                  variant='secondary'
+                  size='md'
+                  className='flex-1'
                 >
                   Guardar
-                </button>
+                </Button>
               </div>
             </form>
           </div>

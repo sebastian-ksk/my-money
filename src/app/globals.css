@@ -1,16 +1,16 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  
+
   /* MyMoney Color Palette */
-  --primary-dark: #233ED9;
-  --primary-medium: #263DBF;
-  --primary-light: #5F72D9;
-  --neutral-light: #F2F2F2;
-  --accent-light: #F2B56B;
-  --accent-dark: #BF815E;
+  --primary-dark: #233ed9;
+  --primary-medium: #263dbf;
+  --primary-light: #5f72d9;
+  --neutral-light: #f2f2f2;
+  --accent-light: #f2b56b;
+  --accent-dark: #bf815e;
 }
 
 @theme inline {
