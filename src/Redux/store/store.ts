@@ -15,11 +15,13 @@ import { autoMigrationMiddleware } from '../middleware/autoMigrationMiddleware';
 // Importar reducers de features
 import { authReducer } from '../features/auth';
 import { userReducer } from '../features/user';
+import { configMyMoneyReducer } from '../features/config-my-money';
 
 // Combinar reducers por dominio
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
+  configMyMoney: configMyMoneyReducer,
   // Agregar más features aquí
 });
 
