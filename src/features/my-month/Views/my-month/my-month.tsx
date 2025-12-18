@@ -249,58 +249,37 @@ const MyMonth = () => {
             >
               Crear Gasto
             </Button>
+            <p className='text-sm text-primary-medium'>
+              Total de gastos del mes: {formatCurrency(totalExpenses)}
+            </p>
           </div>
           {loading ? (
             <div className='text-center py-12'>
-              <p style={{ color: '#666' }}>Cargando gastos...</p>
+              <p className='text-zinc-600'>Cargando gastos...</p>
             </div>
           ) : transactions.length === 0 ? (
             <div className='text-center py-12'>
-              <p style={{ color: '#666' }}>
+              <p className='text-zinc-600'>
                 No hay gastos registrados en {months[selectedMonth]}{' '}
                 {selectedYear}
               </p>
             </div>
           ) : (
             <>
-              <div
-                className='mb-6 p-4 rounded-lg'
-                style={{ backgroundColor: '#F2F2F2' }}
-              >
-                <p className='text-sm' style={{ color: '#263DBF' }}>
-                  Total de gastos del mes:
-                </p>
-                <p className='text-2xl font-bold' style={{ color: '#BF815E' }}>
-                  {formatCurrency(totalExpenses)}
-                </p>
-              </div>
-
               <div className='overflow-x-auto'>
                 <table className='w-full'>
                   <thead>
-                    <tr className='border-b' style={{ borderColor: '#E5E5E5' }}>
-                      <th
-                        className='text-left py-3 px-4 font-semibold'
-                        style={{ color: '#263DBF' }}
-                      >
+                    <tr className='border-b border-zinc-200'>
+                      <th className='text-left py-3 px-4 font-semibold text-primary-medium'>
                         Fecha
                       </th>
-                      <th
-                        className='text-left py-3 px-4 font-semibold'
-                        style={{ color: '#263DBF' }}
-                      >
+                      <th className='text-left py-3 px-4 font-semibold text-primary-medium'>
                         Concepto
                       </th>
-                      <th
-                        className='text-left py-3 px-4 font-semibold'
-                        style={{ color: '#263DBF' }}
-                      >
+                      <th className='text-left py-3 px-4 font-semibold text-primary-medium'>
                         Medio de Pago
                       </th>
-                      <th
-                        className='text-right py-3 px-4 font-semibold'
-                        style={{ color: '#263DBF' }}
-                      >
+                      <th className='text-right py-3 px-4 font-semibold text-primary-medium'>
                         Valor
                       </th>
                     </tr>
@@ -309,22 +288,18 @@ const MyMonth = () => {
                     {transactions.map((transaction) => (
                       <tr
                         key={transaction.id}
-                        className='border-b hover:bg-neutral-light transition-colors'
-                        style={{ borderColor: '#E5E5E5' }}
+                        className='border-b border-zinc-200 hover:bg-neutral-light transition-colors'
                       >
-                        <td className='py-3 px-4' style={{ color: '#666' }}>
+                        <td className='py-3 px-4 text-zinc-600'>
                           {formatDate(transaction.date)}
                         </td>
-                        <td className='py-3 px-4' style={{ color: '#333' }}>
+                        <td className='py-3 px-4 text-zinc-800'>
                           {transaction.concept}
                         </td>
-                        <td className='py-3 px-4' style={{ color: '#666' }}>
+                        <td className='py-3 px-4 text-zinc-600'>
                           {transaction.paymentMethod}
                         </td>
-                        <td
-                          className='py-3 px-4 text-right font-semibold'
-                          style={{ color: '#BF815E' }}
-                        >
+                        <td className='py-3 px-4 text-right font-semibold text-accent-dark'>
                           {formatCurrency(transaction.value)}
                         </td>
                       </tr>
@@ -341,18 +316,12 @@ const MyMonth = () => {
       {showModal && (
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
           <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4'>
-            <h3
-              className='text-2xl font-bold mb-4'
-              style={{ color: '#233ED9' }}
-            >
+            <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
               Crear Nuevo Gasto
             </h3>
             <form onSubmit={handleSubmit}>
               <div className='mb-4'>
-                <label
-                  className='block text-sm font-medium mb-2'
-                  style={{ color: '#263DBF' }}
-                >
+                <label className='block text-sm font-medium mb-2 text-primary-medium'>
                   Valor *
                 </label>
                 <input
@@ -363,17 +332,13 @@ const MyMonth = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, value: e.target.value })
                   }
-                  className='w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black'
-                  style={{ borderColor: '#E5E5E5', color: '#000' }}
+                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
                   placeholder='0.00'
                 />
               </div>
 
               <div className='mb-4'>
-                <label
-                  className='block text-sm font-medium mb-2'
-                  style={{ color: '#263DBF' }}
-                >
+                <label className='block text-sm font-medium mb-2 text-primary-medium'>
                   Concepto *
                 </label>
                 <input
@@ -383,17 +348,13 @@ const MyMonth = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, concept: e.target.value })
                   }
-                  className='w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black'
-                  style={{ borderColor: '#E5E5E5', color: '#000' }}
+                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
                   placeholder='Descripción del gasto'
                 />
               </div>
 
               <div className='mb-6'>
-                <label
-                  className='block text-sm font-medium mb-2'
-                  style={{ color: '#263DBF' }}
-                >
+                <label className='block text-sm font-medium mb-2 text-primary-medium'>
                   Medio de Pago *
                 </label>
                 <select
@@ -402,8 +363,7 @@ const MyMonth = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, paymentMethod: e.target.value })
                   }
-                  className='w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black'
-                  style={{ borderColor: '#E5E5E5', color: '#000' }}
+                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
                   aria-label='Medio de pago'
                 >
                   <option value='efectivo'>Efectivo</option>
