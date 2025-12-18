@@ -1,5 +1,5 @@
 import React from 'react';
-import MyMonth from '@/features/app/Views/my-month/my-month';
+import MyMonth from '@/features/my-month/Views/my-month/my-month';
 
 export default function MyMonthPage() {
   return <MyMonth />;

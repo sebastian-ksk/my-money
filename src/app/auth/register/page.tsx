@@ -36,7 +36,7 @@ export default function RegisterPage() {
         const userData = await userService.findOrCreateUser(result.user);
         saveUserToSession(userData);
       }
-      router.push('/mymoney');
+      router.push('/my-month');
     } catch (err) {
       const error = err as { message?: string };
       setError(error.message || 'Error al crear la cuenta');

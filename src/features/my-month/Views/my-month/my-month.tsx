@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { firestore, auth } from '@/config/firebase-config';
 import firebaseApp from 'firebase/app';
 import { Button } from '@/components/ui';
+import MonthTabs from '@/features/my-month/widgets/month-tabs/month-tabs';
 
 interface Transaction {
   id: string;
@@ -18,6 +19,9 @@ interface Transaction {
 }
 
 const MyMonth = () => {
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -29,7 +33,7 @@ const MyMonth = () => {
 
   useEffect(() => {
     loadTransactions();
-  }, []);
+  }, [selectedMonth, selectedYear]);
 
   const loadTransactions = async () => {
     try {
@@ -62,11 +66,10 @@ const MyMonth = () => {
 
       console.log('Cargando transacciones para usuario:', currentUser.uid);
 
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfMonth = new Date(selectedYear, selectedMonth, 1);
       const endOfMonth = new Date(
-        now.getFullYear(),
-        now.getMonth() + 1,
+        selectedYear,
+        selectedMonth + 1,
         0,
         23,
         59,
@@ -164,7 +167,14 @@ const MyMonth = () => {
         paymentMethod: 'efectivo',
       });
       setShowModal(false);
-      loadTransactions();
+      // Si el gasto se crea en el mes actual, recargar
+      const now = new Date();
+      if (
+        now.getMonth() === selectedMonth &&
+        now.getFullYear() === selectedYear
+      ) {
+        loadTransactions();
+      }
     } catch (error) {
       console.error('Error al guardar transacción:', error);
     }
@@ -188,12 +198,32 @@ const MyMonth = () => {
 
   const totalExpenses = transactions.reduce((sum, t) => sum + t.value, 0);
 
+  const handleMonthChange = (month: number, year: number) => {
+    setSelectedMonth(month);
+    setSelectedYear(year);
+  };
+
+  const months = [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ];
+
   return (
     <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
       <div className='bg-white rounded-lg shadow-lg p-8'>
         <div className='flex justify-between items-center mb-6'>
           <h2 className='text-3xl font-bold' style={{ color: '#233ED9' }}>
-            Mis Gastos del Mes
+            Mis Gastos - {months[selectedMonth]} {selectedYear}
           </h2>
           <Button
             onClick={() => setShowModal(true)}
@@ -219,13 +249,22 @@ const MyMonth = () => {
           </Button>
         </div>
 
+        <MonthTabs
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onMonthChange={handleMonthChange}
+        />
+
         {loading ? (
           <div className='text-center py-12'>
             <p style={{ color: '#666' }}>Cargando gastos...</p>
           </div>
         ) : transactions.length === 0 ? (
           <div className='text-center py-12'>
-            <p style={{ color: '#666' }}>No hay gastos registrados este mes</p>
+            <p style={{ color: '#666' }}>
+              No hay gastos registrados en {months[selectedMonth]}{' '}
+              {selectedYear}
+            </p>
           </div>
         ) : (
           <>
