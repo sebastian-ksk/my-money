@@ -6,6 +6,7 @@ import {
   loadFixedExpenses,
   loadExpenseCategories,
   createFixedExpense,
+  updateFixedExpense,
   deleteFixedExpense,
   selectFixedExpenses,
   selectExpenseCategories,
@@ -22,6 +23,7 @@ export default function FixedExpensesSection() {
   const loading = useAppSelector(selectConfigLoading);
   const userConfig = useAppSelector(selectUserConfig);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     amount: '',
@@ -94,18 +96,33 @@ export default function FixedExpensesSection() {
       ? formData.selectedMonths
       : undefined;
 
-    await dispatch(
-      createFixedExpense({
-        userId: user.uid,
-        expense: {
-          name: formData.name,
-          amount: numericAmount,
-          dayOfMonth: parseInt(formData.dayOfMonth),
-          categoryId,
-          months,
-        },
-      })
-    );
+    if (editingId) {
+      await dispatch(
+        updateFixedExpense({
+          expenseId: editingId,
+          expense: {
+            name: formData.name,
+            amount: numericAmount,
+            dayOfMonth: parseInt(formData.dayOfMonth),
+            categoryId,
+            months,
+          },
+        })
+      );
+    } else {
+      await dispatch(
+        createFixedExpense({
+          userId: user.uid,
+          expense: {
+            name: formData.name,
+            amount: numericAmount,
+            dayOfMonth: parseInt(formData.dayOfMonth),
+            categoryId,
+            months,
+          },
+        })
+      );
+    }
 
     setFormData({
       name: '',
@@ -116,13 +133,51 @@ export default function FixedExpensesSection() {
       appliesToAllMonths: true,
       selectedMonths: [],
     });
+    setEditingId(null);
     setShowModal(false);
+  };
+
+  const handleEdit = (expense: {
+    id?: string;
+    name: string;
+    amount: number;
+    dayOfMonth: number;
+    categoryId: string;
+    months?: number[];
+  }) => {
+    if (expense.id) {
+      setEditingId(expense.id);
+      setFormData({
+        name: expense.name,
+        amount: formatCurrency(expense.amount, currency),
+        dayOfMonth: expense.dayOfMonth.toString(),
+        categoryId: expense.categoryId,
+        categoryName: '',
+        appliesToAllMonths: !expense.months || expense.months.length === 0,
+        selectedMonths: expense.months || [],
+      });
+      setShowModal(true);
+    }
   };
 
   const handleDelete = async (expenseId: string) => {
     if (confirm('¿Está seguro de eliminar este gasto fijo?')) {
       await dispatch(deleteFixedExpense(expenseId));
     }
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      name: '',
+      amount: '',
+      dayOfMonth: '',
+      categoryId: '',
+      categoryName: '',
+      appliesToAllMonths: true,
+      selectedMonths: [],
+    });
+    setEditingId(null);
+    setShowModal(false);
   };
 
   const totalExpenses = fixedExpenses.reduce(
@@ -185,8 +240,8 @@ export default function FixedExpensesSection() {
                 <th className='text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700'>
                   Monto
                 </th>
-                <th className='text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700 w-20'>
-                  Acción
+                <th className='text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700 w-24'>
+                  Acciones
                 </th>
               </tr>
             </thead>
@@ -231,7 +286,28 @@ export default function FixedExpensesSection() {
                       </p>
                     </td>
                     <td className='py-3 px-2 sm:px-4'>
-                      <div className='flex justify-center'>
+                      <div className='flex justify-center gap-1 sm:gap-2'>
+                        <Button
+                          onClick={() => handleEdit(expense)}
+                          variant='ghost'
+                          size='sm'
+                          icon={
+                            <svg
+                              className='w-4 h-4'
+                              fill='none'
+                              stroke='currentColor'
+                              viewBox='0 0 24 24'
+                            >
+                              <path
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                                strokeWidth={2}
+                                d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                              />
+                            </svg>
+                          }
+                          iconOnly
+                        />
                         <Button
                           onClick={() => expense.id && handleDelete(expense.id)}
                           variant='ghost'
@@ -282,7 +358,7 @@ export default function FixedExpensesSection() {
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
           <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4'>
             <h4 className='text-xl font-bold mb-4 text-primary-dark'>
-              Nuevo Gasto Fijo
+              {editingId ? 'Editar Gasto Fijo' : 'Nuevo Gasto Fijo'}
             </h4>
             <form onSubmit={handleSubmit} className='space-y-4'>
               <div>
@@ -470,18 +546,7 @@ export default function FixedExpensesSection() {
               <div className='flex gap-3'>
                 <Button
                   type='button'
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData({
-                      name: '',
-                      amount: '',
-                      dayOfMonth: '',
-                      categoryId: '',
-                      categoryName: '',
-                      appliesToAllMonths: true,
-                      selectedMonths: [],
-                    });
-                  }}
+                  onClick={handleCancel}
                   variant='outline'
                   size='md'
                   className='flex-1'

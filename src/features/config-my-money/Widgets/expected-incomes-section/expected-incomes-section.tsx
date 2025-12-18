@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
 import {
   loadExpectedIncomes,
   createExpectedIncome,
+  updateExpectedIncome,
   deleteExpectedIncome,
   selectExpectedIncomes,
   selectConfigLoading,
@@ -19,6 +20,7 @@ export default function ExpectedIncomesSection() {
   const loading = useAppSelector(selectConfigLoading);
   const userConfig = useAppSelector(selectUserConfig);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     amount: '',
@@ -65,17 +67,31 @@ export default function ExpectedIncomesSection() {
       ? formData.selectedMonths
       : undefined;
 
-    await dispatch(
-      createExpectedIncome({
-        userId: user.uid,
-        income: {
-          name: formData.name,
-          amount: numericAmount,
-          dayOfMonth: parseInt(formData.dayOfMonth),
-          months,
-        },
-      })
-    );
+    if (editingId) {
+      await dispatch(
+        updateExpectedIncome({
+          incomeId: editingId,
+          income: {
+            name: formData.name,
+            amount: numericAmount,
+            dayOfMonth: parseInt(formData.dayOfMonth),
+            months,
+          },
+        })
+      );
+    } else {
+      await dispatch(
+        createExpectedIncome({
+          userId: user.uid,
+          income: {
+            name: formData.name,
+            amount: numericAmount,
+            dayOfMonth: parseInt(formData.dayOfMonth),
+            months,
+          },
+        })
+      );
+    }
 
     setFormData({
       name: '',
@@ -84,13 +100,46 @@ export default function ExpectedIncomesSection() {
       appliesToAllMonths: true,
       selectedMonths: [],
     });
+    setEditingId(null);
     setShowModal(false);
+  };
+
+  const handleEdit = (income: {
+    id?: string;
+    name: string;
+    amount: number;
+    dayOfMonth: number;
+    months?: number[];
+  }) => {
+    if (income.id) {
+      setEditingId(income.id);
+      setFormData({
+        name: income.name,
+        amount: formatCurrency(income.amount, currency),
+        dayOfMonth: income.dayOfMonth.toString(),
+        appliesToAllMonths: !income.months || income.months.length === 0,
+        selectedMonths: income.months || [],
+      });
+      setShowModal(true);
+    }
   };
 
   const handleDelete = async (incomeId: string) => {
     if (confirm('¿Está seguro de eliminar este ingreso esperado?')) {
       await dispatch(deleteExpectedIncome(incomeId));
     }
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      name: '',
+      amount: '',
+      dayOfMonth: '',
+      appliesToAllMonths: true,
+      selectedMonths: [],
+    });
+    setEditingId(null);
+    setShowModal(false);
   };
 
   const totalIncomes = expectedIncomes.reduce(
@@ -150,8 +199,8 @@ export default function ExpectedIncomesSection() {
                 <th className='text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700'>
                   Monto
                 </th>
-                <th className='text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700 w-20'>
-                  Acción
+                <th className='text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700 w-24'>
+                  Acciones
                 </th>
               </tr>
             </thead>
@@ -187,7 +236,28 @@ export default function ExpectedIncomesSection() {
                     </p>
                   </td>
                   <td className='py-3 px-2 sm:px-4'>
-                    <div className='flex justify-center'>
+                    <div className='flex justify-center gap-1 sm:gap-2'>
+                      <Button
+                        onClick={() => handleEdit(income)}
+                        variant='ghost'
+                        size='sm'
+                        icon={
+                          <svg
+                            className='w-4 h-4'
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'
+                          >
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                            />
+                          </svg>
+                        }
+                        iconOnly
+                      />
                       <Button
                         onClick={() => income.id && handleDelete(income.id)}
                         variant='ghost'
@@ -237,7 +307,7 @@ export default function ExpectedIncomesSection() {
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
           <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4'>
             <h4 className='text-xl font-bold mb-4 text-primary-dark'>
-              Nuevo Ingreso Esperado
+              {editingId ? 'Editar Ingreso Esperado' : 'Nuevo Ingreso Esperado'}
             </h4>
             <form onSubmit={handleSubmit} className='space-y-4'>
               <div>
@@ -386,16 +456,7 @@ export default function ExpectedIncomesSection() {
               <div className='flex gap-3'>
                 <Button
                   type='button'
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData({
-                      name: '',
-                      amount: '',
-                      dayOfMonth: '',
-                      appliesToAllMonths: true,
-                      selectedMonths: [],
-                    });
-                  }}
+                  onClick={handleCancel}
                   variant='outline'
                   size='md'
                   className='flex-1'
