@@ -1,6 +1,9 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { myMonthService } from '@/services/Firebase/my-month-service';
-import type { Transaction } from './my-month-models';
+import {
+  myMonthService,
+  getPreviousMonthPeriod,
+} from '@/services/Firebase/my-month-service';
+import type { Transaction, MonthlyLiquidityState } from './my-month-models';
 
 // ========== Transactions ==========
 export const loadTransactions = createAsyncThunk(
@@ -95,6 +98,102 @@ export const deleteTransaction = createAsyncThunk(
       return transactionId;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Error al eliminar transacción');
+    }
+  }
+);
+
+// ========== Monthly Liquidity States ==========
+export const loadMonthlyLiquidity = createAsyncThunk(
+  'myMonth/loadMonthlyLiquidity',
+  async (
+    {
+      userId,
+      monthPeriod,
+    }: {
+      userId: string;
+      monthPeriod: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      let liquidity = await myMonthService.getMonthlyLiquidity(
+        userId,
+        monthPeriod
+      );
+
+      // Si no existe, crear uno con el expectedAmount del mes anterior
+      if (!liquidity) {
+        const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+        const previousBalance = await myMonthService.calculateMonthBalance(
+          userId,
+          previousPeriod
+        );
+
+        liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
+          userId,
+          monthPeriod,
+          previousBalance,
+          null
+        );
+      }
+
+      return liquidity;
+    } catch (error: any) {
+      console.error('Error en loadMonthlyLiquidity:', error);
+      return rejectWithValue(
+        error.message || 'Error al cargar estado de liquidez'
+      );
+    }
+  }
+);
+
+export const updateMonthlyLiquidity = createAsyncThunk(
+  'myMonth/updateMonthlyLiquidity',
+  async (
+    {
+      userId,
+      monthPeriod,
+      realAmount,
+    }: {
+      userId: string;
+      monthPeriod: string;
+      realAmount: number;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const liquidity = await myMonthService.getMonthlyLiquidity(
+        userId,
+        monthPeriod
+      );
+
+      if (!liquidity) {
+        // Si no existe, crear uno
+        const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+        const previousBalance = await myMonthService.calculateMonthBalance(
+          userId,
+          previousPeriod
+        );
+
+        return await myMonthService.createOrUpdateMonthlyLiquidity(
+          userId,
+          monthPeriod,
+          previousBalance,
+          realAmount
+        );
+      }
+
+      return await myMonthService.createOrUpdateMonthlyLiquidity(
+        userId,
+        monthPeriod,
+        liquidity.expectedAmount,
+        realAmount
+      );
+    } catch (error: any) {
+      console.error('Error en updateMonthlyLiquidity:', error);
+      return rejectWithValue(
+        error.message || 'Error al actualizar estado de liquidez'
+      );
     }
   }
 );

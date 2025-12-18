@@ -50,3 +50,6 @@ export const selectTotalExpenses = (state: RootState) => {
   const regular = selectTotalRegularExpenses(state);
   return fixed + regular;
 };
+
+export const selectMonthlyLiquidity = (state: RootState) =>
+  state.myMonth.monthlyLiquidity;

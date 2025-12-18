@@ -25,8 +25,19 @@ export interface Transaction {
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
 
+export interface MonthlyLiquidityState {
+  id?: string;
+  userId: string;
+  monthPeriod: string; // Formato: "YYYY-MM" basado en fecha de corte
+  expectedAmount: number; // Valor esperado (resultado del mes anterior)
+  realAmount: number | null; // Valor real (puede ser null si no se ha establecido)
+  createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+}
+
 export interface MyMonthState {
   transactions: Transaction[];
+  monthlyLiquidity: MonthlyLiquidityState | null; // Estado de liquidez del mes actual
   loading: boolean;
   error: string | null;
   currentMonthPeriod: string | null; // Periodo del mes actual basado en fecha de corte

@@ -4,11 +4,14 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  loadMonthlyLiquidity,
+  updateMonthlyLiquidity,
 } from './my-month-thunks';
 import type { MyMonthState, Transaction } from './my-month-models';
 
 const initialState: MyMonthState = {
   transactions: [],
+  monthlyLiquidity: null,
   loading: false,
   error: null,
   currentMonthPeriod: null,
@@ -73,6 +76,32 @@ const myMonthSlice = createSlice({
         state.transactions = state.transactions.filter(
           (t) => t.id !== action.meta.arg
         );
+      })
+      // Load Monthly Liquidity
+      .addCase(loadMonthlyLiquidity.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadMonthlyLiquidity.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthlyLiquidity = action.payload;
+      })
+      .addCase(loadMonthlyLiquidity.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update Monthly Liquidity
+      .addCase(updateMonthlyLiquidity.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateMonthlyLiquidity.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthlyLiquidity = action.payload;
+      })
+      .addCase(updateMonthlyLiquidity.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

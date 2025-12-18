@@ -10,11 +10,9 @@ import {
   selectUserConfig,
   selectFixedExpenses,
   selectExpectedIncomes,
-  selectBalanceSources,
   loadUserConfig,
   loadFixedExpenses,
   loadExpectedIncomes,
-  loadBalanceSources,
 } from '@/Redux/features/config-my-money';
 import {
   selectTransactions,
@@ -22,15 +20,23 @@ import {
   selectTotalRealIncomes,
   selectTotalRegularExpenses,
   selectMyMonthLoading,
+  selectMonthlyLiquidity,
 } from '@/Redux/features/my-month';
 import {
   loadTransactions,
   createTransaction,
+  loadMonthlyLiquidity,
+  updateMonthlyLiquidity,
 } from '@/Redux/features/my-month/my-month-thunks';
 import { calculateMonthPeriod } from '@/services/Firebase/my-month-service';
 import { formatCurrency } from '@/utils/currency';
 
-type ModalType = 'fixedExpense' | 'income' | 'regularExpense' | null;
+type ModalType =
+  | 'fixedExpense'
+  | 'income'
+  | 'regularExpense'
+  | 'liquidity'
+  | null;
 
 const MyMonth = () => {
   const dispatch = useAppDispatch();
@@ -38,12 +44,12 @@ const MyMonth = () => {
   const userConfig = useAppSelector(selectUserConfig);
   const fixedExpenses = useAppSelector(selectFixedExpenses);
   const expectedIncomes = useAppSelector(selectExpectedIncomes);
-  const balanceSources = useAppSelector(selectBalanceSources);
   const transactions = useAppSelector(selectTransactions);
   const totalFixedPayments = useAppSelector(selectTotalFixedExpensePayments);
   const totalIncomes = useAppSelector(selectTotalRealIncomes);
   const totalRegularExpenses = useAppSelector(selectTotalRegularExpenses);
   const loading = useAppSelector(selectMyMonthLoading);
+  const monthlyLiquidity = useAppSelector(selectMonthlyLiquidity);
 
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
@@ -58,6 +64,9 @@ const MyMonth = () => {
     concept: '',
     paymentMethod: 'efectivo',
   });
+  const [liquidityFormData, setLiquidityFormData] = useState({
+    realAmount: '',
+  });
 
   // Log para debugging
   useEffect(() => {
@@ -71,11 +80,9 @@ const MyMonth = () => {
     monthResetDay
   );
 
-  // Calcular balance: líquido + ingresos reales - gastos (fijos + eventuales)
-  const totalLiquid = balanceSources.reduce(
-    (sum, source) => sum + source.amount,
-    0
-  );
+  // Calcular balance: líquido inicial + ingresos reales - gastos (fijos + eventuales)
+  const totalLiquid =
+    monthlyLiquidity?.realAmount ?? monthlyLiquidity?.expectedAmount ?? 0;
   const totalExpenses = totalFixedPayments + totalRegularExpenses;
   const balance = totalLiquid + totalIncomes - totalExpenses;
 
@@ -88,7 +95,6 @@ const MyMonth = () => {
       // Cargar datos de configuración
       dispatch(loadFixedExpenses(user.uid));
       dispatch(loadExpectedIncomes(user.uid));
-      dispatch(loadBalanceSources(user.uid));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, dispatch]);
@@ -105,12 +111,59 @@ const MyMonth = () => {
       ).catch((error: unknown) => {
         console.error('Error al cargar transacciones:', error);
       });
+
+      dispatch(
+        loadMonthlyLiquidity({
+          userId: user.uid,
+          monthPeriod: currentPeriod,
+        })
+      ).catch((error: unknown) => {
+        console.error('Error al cargar estado de liquidez:', error);
+      });
     }
   }, [user?.uid, currentPeriod, userConfig, dispatch]);
 
   const handleMonthChange = (month: number, year: number) => {
     setSelectedMonth(month);
     setSelectedYear(year);
+  };
+
+  const handleOpenLiquidityModal = () => {
+    setShowModal('liquidity');
+    setLiquidityFormData({
+      realAmount:
+        monthlyLiquidity?.realAmount?.toString() ||
+        monthlyLiquidity?.expectedAmount?.toString() ||
+        '',
+    });
+  };
+
+  const handleSubmitLiquidity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.uid || !liquidityFormData.realAmount) return;
+
+    try {
+      await dispatch(
+        updateMonthlyLiquidity({
+          userId: user.uid,
+          monthPeriod: currentPeriod,
+          realAmount: parseFloat(liquidityFormData.realAmount),
+        })
+      ).unwrap();
+
+      setShowModal(null);
+      setLiquidityFormData({ realAmount: '' });
+    } catch (error) {
+      console.error('Error al actualizar liquidez:', error);
+    }
+  };
+
+  const handleUseExpectedAmount = () => {
+    if (monthlyLiquidity?.expectedAmount) {
+      setLiquidityFormData({
+        realAmount: monthlyLiquidity.expectedAmount.toString(),
+      });
+    }
   };
 
   const handleOpenFixedExpenseModal = () => {
@@ -528,17 +581,35 @@ const MyMonth = () => {
           onMonthChange={handleMonthChange}
         >
           {/* Balance Section */}
-          <div className='mb-6 text-sm text-zinc-600'>
-            Balance: Líquido {formatCurrency(totalLiquid, currency)} + Ingresos{' '}
-            {formatCurrency(totalIncomes, currency)} - Gastos{' '}
-            {formatCurrency(totalExpenses, currency)} ={' '}
-            <span
-              className={`font-semibold ${
-                balance >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}
-            >
-              {formatCurrency(balance, currency)}
-            </span>
+          <div className='mb-6'>
+            <div className='text-sm text-zinc-600 mb-2'>
+              Balance: Líquido Inicial {formatCurrency(totalLiquid, currency)} +
+              Ingresos {formatCurrency(totalIncomes, currency)} - Gastos{' '}
+              {formatCurrency(totalExpenses, currency)} ={' '}
+              <span
+                className={`font-semibold ${
+                  balance >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {formatCurrency(balance, currency)}
+              </span>
+            </div>
+            <div className='flex items-center gap-3 text-sm'>
+              <div className='text-zinc-600'>
+                <span className='font-medium'>Líquido Inicial Esperado:</span>{' '}
+                {formatCurrency(
+                  monthlyLiquidity?.expectedAmount ?? 0,
+                  currency
+                )}
+              </div>
+              <div className='text-zinc-600'>
+                <span className='font-medium'>Líquido Inicial Real:</span>{' '}
+                {monthlyLiquidity?.realAmount !== null &&
+                monthlyLiquidity?.realAmount !== undefined
+                  ? formatCurrency(monthlyLiquidity.realAmount, currency)
+                  : 'No establecido'}
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -608,6 +679,30 @@ const MyMonth = () => {
               }
             >
               Agregar Gasto
+            </Button>
+            <Button
+              onClick={handleOpenLiquidityModal}
+              variant='secondary'
+              size='md'
+              icon={
+                <svg
+                  className='w-5 h-5'
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                  />
+                </svg>
+              }
+            >
+              {monthlyLiquidity?.realAmount !== null
+                ? 'Editar Liquidez'
+                : 'Establecer Liquidez'}
             </Button>
           </div>
 
@@ -988,6 +1083,90 @@ const MyMonth = () => {
                       ? !formData.realAmount
                       : !formData.value || !formData.concept
                   }
+                >
+                  Guardar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Estado de Liquidez */}
+      {showModal === 'liquidity' && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
+            <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
+              Estado Inicial de Liquidez
+            </h3>
+            <form onSubmit={handleSubmitLiquidity}>
+              <div className='mb-4'>
+                <label className='block text-sm font-medium mb-2 text-primary-medium'>
+                  Valor Esperado (del mes anterior)
+                </label>
+                <input
+                  type='number'
+                  step='0.01'
+                  value={monthlyLiquidity?.expectedAmount ?? 0}
+                  readOnly
+                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg bg-zinc-100 text-zinc-600'
+                />
+                <p className='text-xs text-zinc-500 mt-1'>
+                  Este es el balance final del mes anterior
+                </p>
+              </div>
+
+              <div className='mb-4'>
+                <label className='block text-sm font-medium mb-2 text-primary-medium'>
+                  Valor Real *
+                </label>
+                <input
+                  type='number'
+                  step='0.01'
+                  required
+                  value={liquidityFormData.realAmount}
+                  onChange={(e) =>
+                    setLiquidityFormData({
+                      ...liquidityFormData,
+                      realAmount: e.target.value,
+                    })
+                  }
+                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
+                  placeholder='0.00'
+                />
+                <p className='text-xs text-zinc-500 mt-1'>
+                  Establece el valor real de tu liquidez inicial
+                </p>
+              </div>
+
+              <div className='mb-6'>
+                <Button
+                  type='button'
+                  onClick={handleUseExpectedAmount}
+                  variant='outline'
+                  size='sm'
+                  className='w-full'
+                >
+                  Usar Valor Esperado
+                </Button>
+              </div>
+
+              <div className='flex gap-3'>
+                <Button
+                  type='button'
+                  onClick={() => setShowModal(null)}
+                  variant='outline'
+                  size='md'
+                  className='flex-1'
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type='submit'
+                  variant='secondary'
+                  size='md'
+                  className='flex-1'
+                  disabled={!liquidityFormData.realAmount}
                 >
                   Guardar
                 </Button>
