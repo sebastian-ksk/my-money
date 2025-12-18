@@ -15,15 +15,15 @@ const ConfigMyMoney = () => {
   };
 
   return (
-    <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4'>
-      <div className='space-y-4'>
+    <div className='w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6'>
+      <div className='space-y-3 sm:space-y-4'>
         {/* Sección: Configuración General */}
-        <div className='bg-white rounded-lg shadow-lg overflow-hidden'>
+        <div className='bg-white rounded-lg shadow-md sm:shadow-lg overflow-hidden'>
           <button
             onClick={() => toggleSection('user-config')}
-            className='w-full px-6 py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
+            className='w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
           >
-            <h2 className='text-xl font-semibold text-primary-dark'>
+            <h2 className='text-lg sm:text-xl font-semibold text-primary-dark'>
               Configuración General
             </h2>
             <svg
@@ -43,19 +43,19 @@ const ConfigMyMoney = () => {
             </svg>
           </button>
           {openSection === 'user-config' && (
-            <div className='px-6 pb-6'>
+            <div className='px-4 sm:px-6 pb-4 sm:pb-6'>
               <UserConfigSection />
             </div>
           )}
         </div>
 
         {/* Sección: Balance Líquido */}
-        <div className='bg-white rounded-lg shadow-lg overflow-hidden'>
+        <div className='bg-white rounded-lg shadow-md sm:shadow-lg overflow-hidden'>
           <button
             onClick={() => toggleSection('liquid-balance')}
-            className='w-full px-6 py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
+            className='w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
           >
-            <h2 className='text-xl font-semibold text-primary-dark'>
+            <h2 className='text-lg sm:text-xl font-semibold text-primary-dark'>
               Balance Líquido (Disponible)
             </h2>
             <svg
@@ -75,19 +75,19 @@ const ConfigMyMoney = () => {
             </svg>
           </button>
           {openSection === 'liquid-balance' && (
-            <div className='px-6 pb-6'>
+            <div className='px-4 sm:px-6 pb-4 sm:pb-6'>
               <LiquidBalanceSection />
             </div>
           )}
         </div>
 
         {/* Sección: Balance en Ahorro */}
-        <div className='bg-white rounded-lg shadow-lg overflow-hidden'>
+        <div className='bg-white rounded-lg shadow-md sm:shadow-lg overflow-hidden'>
           <button
             onClick={() => toggleSection('savings-balance')}
-            className='w-full px-6 py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
+            className='w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
           >
-            <h2 className='text-xl font-semibold text-primary-dark'>
+            <h2 className='text-lg sm:text-xl font-semibold text-primary-dark'>
               Balance en Ahorro
             </h2>
             <svg
@@ -107,19 +107,19 @@ const ConfigMyMoney = () => {
             </svg>
           </button>
           {openSection === 'savings-balance' && (
-            <div className='px-6 pb-6'>
+            <div className='px-4 sm:px-6 pb-4 sm:pb-6'>
               <SavingsBalanceSection />
             </div>
           )}
         </div>
 
         {/* Sección: Gastos Fijos */}
-        <div className='bg-white rounded-lg shadow-lg overflow-hidden'>
+        <div className='bg-white rounded-lg shadow-md sm:shadow-lg overflow-hidden'>
           <button
             onClick={() => toggleSection('fixed-expenses')}
-            className='w-full px-6 py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
+            className='w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
           >
-            <h2 className='text-xl font-semibold text-primary-dark'>
+            <h2 className='text-lg sm:text-xl font-semibold text-primary-dark'>
               Gastos Fijos
             </h2>
             <svg
@@ -139,19 +139,19 @@ const ConfigMyMoney = () => {
             </svg>
           </button>
           {openSection === 'fixed-expenses' && (
-            <div className='px-6 pb-6'>
+            <div className='px-4 sm:px-6 pb-4 sm:pb-6'>
               <FixedExpensesSection />
             </div>
           )}
         </div>
 
         {/* Sección: Ingresos Esperados */}
-        <div className='bg-white rounded-lg shadow-lg overflow-hidden'>
+        <div className='bg-white rounded-lg shadow-md sm:shadow-lg overflow-hidden'>
           <button
             onClick={() => toggleSection('expected-incomes')}
-            className='w-full px-6 py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
+            className='w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
           >
-            <h2 className='text-xl font-semibold text-primary-dark'>
+            <h2 className='text-lg sm:text-xl font-semibold text-primary-dark'>
               Ingresos Esperados
             </h2>
             <svg
@@ -171,7 +171,7 @@ const ConfigMyMoney = () => {
             </svg>
           </button>
           {openSection === 'expected-incomes' && (
-            <div className='px-6 pb-6'>
+            <div className='px-4 sm:px-6 pb-4 sm:pb-6'>
               <ExpectedIncomesSection />
             </div>
           )}

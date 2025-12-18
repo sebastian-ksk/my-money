@@ -110,23 +110,19 @@ export default function SavingsBalanceSection() {
   };
 
   return (
-    <div className='bg-white rounded-lg shadow-lg p-6 mb-6'>
-      <div className='flex justify-between items-center mb-4'>
-        <div>
-          <h3 className='text-xl font-bold text-primary-dark'>
-            Balance en Ahorro
-          </h3>
-          <p className='text-sm text-zinc-600 mt-1'>
-            Dinero reservado que no debe utilizarse para gastos
-          </p>
-        </div>
+    <div className='w-full'>
+      <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4'>
+        <p className='text-sm text-zinc-600'>
+          Dinero reservado que no debe utilizarse para gastos
+        </p>
         <Button
           onClick={() => setShowModal(true)}
           variant='secondary'
-          size='md'
+          size='sm'
+          className='w-full sm:w-auto'
           icon={
             <svg
-              className='w-5 h-5'
+              className='w-4 h-4 sm:w-5 sm:h-5'
               fill='none'
               stroke='currentColor'
               viewBox='0 0 24 24'
@@ -140,86 +136,114 @@ export default function SavingsBalanceSection() {
             </svg>
           }
         >
-          Agregar Fuente
+          <span className='hidden sm:inline'>Agregar Fuente</span>
+          <span className='sm:hidden'>Agregar</span>
         </Button>
       </div>
 
       {savingsSources.length === 0 ? (
-        <p className='text-zinc-600 text-center py-8'>
-          No hay fuentes de ahorro configuradas
-        </p>
-      ) : (
-        <div className='space-y-2 mb-4'>
-          {savingsSources.map((source) => (
-            <div
-              key={source.id}
-              className='flex justify-between items-center p-4 border border-zinc-200 rounded-lg hover:bg-neutral-light'
-            >
-              <div className='flex-1'>
-                <p className='font-semibold text-primary-dark'>{source.name}</p>
-                <p className='text-sm text-zinc-600'>
-                  {formatCurrency(source.amount, currency)}
-                </p>
-              </div>
-              <div className='flex gap-2'>
-                <Button
-                  onClick={() => handleEdit(source)}
-                  variant='ghost'
-                  size='sm'
-                  icon={
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
-                      />
-                    </svg>
-                  }
-                  iconOnly
-                />
-                <Button
-                  onClick={() => source.id && handleDelete(source.id)}
-                  variant='ghost'
-                  size='sm'
-                  icon={
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
-                      />
-                    </svg>
-                  }
-                  iconOnly
-                />
-              </div>
-            </div>
-          ))}
+        <div className='text-center py-8 sm:py-12'>
+          <p className='text-zinc-500 text-sm sm:text-base'>
+            No hay fuentes de ahorro configuradas
+          </p>
         </div>
-      )}
-
-      {savingsSources.length > 0 && (
-        <div className='mt-4 pt-4 border-t border-zinc-200'>
-          <div className='flex justify-between items-center'>
-            <span className='text-lg font-semibold text-primary-dark'>
-              Total Ahorro:
-            </span>
-            <span className='text-xl font-bold text-primary-medium'>
-              {formatCurrency(totalSavings, currency)}
-            </span>
-          </div>
+      ) : (
+        <div className='overflow-x-auto'>
+          <table className='w-full border-collapse'>
+            <thead>
+              <tr className='border-b border-zinc-200'>
+                <th className='text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700'>
+                  Fuente
+                </th>
+                <th className='text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700'>
+                  Monto
+                </th>
+                <th className='text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700 w-24'>
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {savingsSources.map((source) => (
+                <tr
+                  key={source.id}
+                  className='border-b border-zinc-100 hover:bg-zinc-50 transition-colors'
+                >
+                  <td className='py-3 px-2 sm:px-4'>
+                    <p className='font-medium text-sm sm:text-base text-primary-dark'>
+                      {source.name}
+                    </p>
+                  </td>
+                  <td className='py-3 px-2 sm:px-4 text-right'>
+                    <p className='text-sm sm:text-base font-semibold text-zinc-700'>
+                      {formatCurrency(source.amount, currency)}
+                    </p>
+                  </td>
+                  <td className='py-3 px-2 sm:px-4'>
+                    <div className='flex justify-center gap-1 sm:gap-2'>
+                      <Button
+                        onClick={() => handleEdit(source)}
+                        variant='ghost'
+                        size='sm'
+                        icon={
+                          <svg
+                            className='w-4 h-4'
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'
+                          >
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                            />
+                          </svg>
+                        }
+                        iconOnly
+                      />
+                      <Button
+                        onClick={() => source.id && handleDelete(source.id)}
+                        variant='ghost'
+                        size='sm'
+                        icon={
+                          <svg
+                            className='w-4 h-4'
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'
+                          >
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+                            />
+                          </svg>
+                        }
+                        iconOnly
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className='bg-zinc-50 border-t-2 border-zinc-200'>
+                <td className='py-3 px-2 sm:px-4'>
+                  <span className='font-semibold text-sm sm:text-base text-primary-dark'>
+                    Total
+                  </span>
+                </td>
+                <td className='py-3 px-2 sm:px-4 text-right'>
+                  <span className='font-bold text-base sm:text-lg text-primary-medium'>
+                    {formatCurrency(totalSavings, currency)}
+                  </span>
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       )}
 
