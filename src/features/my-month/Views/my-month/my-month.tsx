@@ -102,7 +102,7 @@ const MyMonth = () => {
           userId: user.uid,
           monthPeriod: currentPeriod,
         })
-      ).catch((error) => {
+      ).catch((error: unknown) => {
         console.error('Error al cargar transacciones:', error);
       });
     }
@@ -207,7 +207,7 @@ const MyMonth = () => {
 
     try {
       console.log('Dispatching createTransaction...');
-      const result = await dispatch(
+      await dispatch(
         createTransaction({
           userId: user.uid,
           transaction: {
@@ -438,31 +438,86 @@ const MyMonth = () => {
     return ei.months.includes(currentMonthNumber);
   });
 
-  // Mapear transacciones para mostrar con información adicional
-  const allTransactions = transactions
-    .map((t) => {
-      let concept = t.concept;
-
-      // Obtener el nombre del gasto fijo o ingreso esperado si aplica
-      if (t.type === 'fixed_expense' && t.fixedExpenseId) {
-        const fe = fixedExpenses.find((fe) => fe.id === t.fixedExpenseId);
-        if (fe) concept = fe.name;
-      } else if (t.type === 'expected_income' && t.expectedIncomeId) {
-        const ei = expectedIncomes.find((ei) => ei.id === t.expectedIncomeId);
-        if (ei) concept = ei.name;
-      }
-
-      return {
-        ...t,
-        concept,
-        date: t.date as firebaseApp.firestore.Timestamp,
-      };
+  // Crear entradas para gastos fijos esperados que no han sido agregados
+  const pendingFixedExpenses = expectedFixedExpensesForMonth
+    .filter((fe) => {
+      return !transactions.some(
+        (t) => t.type === 'fixed_expense' && t.fixedExpenseId === fe.id
+      );
     })
-    .sort((a, b) => {
-      const dateA = a.date.toDate().getTime();
-      const dateB = b.date.toDate().getTime();
-      return dateB - dateA;
+    .map((fe) => {
+      const transactionDate = new Date(
+        selectedYear,
+        selectedMonth,
+        fe.dayOfMonth
+      );
+      return {
+        id: `pending-fe-${fe.id}`,
+        concept: fe.name,
+        type: 'fixed_expense' as const,
+        paymentMethod: '-',
+        expectedAmount: fe.amount,
+        value: 0,
+        date: firebaseApp.firestore.Timestamp.fromDate(transactionDate),
+        fixedExpenseId: fe.id,
+      };
     });
+
+  // Crear entradas para ingresos esperados que no han sido agregados
+  const pendingExpectedIncomes = expectedIncomesForMonth
+    .filter((ei) => {
+      return !transactions.some(
+        (t) => t.type === 'expected_income' && t.expectedIncomeId === ei.id
+      );
+    })
+    .map((ei) => {
+      const transactionDate = new Date(
+        selectedYear,
+        selectedMonth,
+        ei.dayOfMonth
+      );
+      return {
+        id: `pending-ei-${ei.id}`,
+        concept: ei.name,
+        type: 'expected_income' as const,
+        paymentMethod: '-',
+        expectedAmount: ei.amount,
+        value: 0,
+        date: firebaseApp.firestore.Timestamp.fromDate(transactionDate),
+        expectedIncomeId: ei.id,
+      };
+    });
+
+  // Mapear transacciones para mostrar con información adicional
+  const mappedTransactions = transactions.map((t) => {
+    let concept = t.concept;
+
+    // Obtener el nombre del gasto fijo o ingreso esperado si aplica
+    if (t.type === 'fixed_expense' && t.fixedExpenseId) {
+      const fe = fixedExpenses.find((fe) => fe.id === t.fixedExpenseId);
+      if (fe) concept = fe.name;
+    } else if (t.type === 'expected_income' && t.expectedIncomeId) {
+      const ei = expectedIncomes.find((ei) => ei.id === t.expectedIncomeId);
+      if (ei) concept = ei.name;
+    }
+
+    return {
+      ...t,
+      concept,
+      date: t.date as firebaseApp.firestore.Timestamp,
+    };
+  });
+
+  // Combinar todas las transacciones: pendientes primero, luego las reales
+  const allTransactions = [
+    ...pendingFixedExpenses,
+    ...pendingExpectedIncomes,
+    ...mappedTransactions,
+  ].sort((a, b) => {
+    const dateA = a.date.toDate().getTime();
+    const dateB = b.date.toDate().getTime();
+    return dateB - dateA;
+  });
 
   return (
     <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4'>
@@ -473,150 +528,18 @@ const MyMonth = () => {
           onMonthChange={handleMonthChange}
         >
           {/* Balance Section */}
-          <div className='mb-6 p-4 bg-primary-light rounded-lg'>
-            <h3 className='text-lg font-semibold mb-2 text-primary-dark'>
-              Balance del Periodo
-            </h3>
-            <div className='grid grid-cols-1 md:grid-cols-4 gap-4 text-sm'>
-              <div>
-                <p className='text-zinc-600'>Líquido</p>
-                <p className='text-lg font-semibold text-primary-dark'>
-                  {formatCurrency(totalLiquid, currency)}
-                </p>
-              </div>
-              <div>
-                <p className='text-zinc-600'>Ingresos Reales</p>
-                <p className='text-lg font-semibold text-green-600'>
-                  +{formatCurrency(totalIncomes, currency)}
-                </p>
-              </div>
-              <div>
-                <p className='text-zinc-600'>Gastos Totales</p>
-                <p className='text-lg font-semibold text-red-600'>
-                  -{formatCurrency(totalExpenses, currency)}
-                </p>
-              </div>
-              <div>
-                <p className='text-zinc-600'>Balance Final</p>
-                <p
-                  className={`text-lg font-semibold ${
-                    balance >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}
-                >
-                  {formatCurrency(balance, currency)}
-                </p>
-              </div>
-            </div>
+          <div className='mb-6 text-sm text-zinc-600'>
+            Balance: Líquido {formatCurrency(totalLiquid, currency)} + Ingresos{' '}
+            {formatCurrency(totalIncomes, currency)} - Gastos{' '}
+            {formatCurrency(totalExpenses, currency)} ={' '}
+            <span
+              className={`font-semibold ${
+                balance >= 0 ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
+              {formatCurrency(balance, currency)}
+            </span>
           </div>
-
-          {/* Gastos Fijos Esperados */}
-          {expectedFixedExpensesForMonth.length > 0 && (
-            <div className='mb-6 p-4 bg-zinc-50 rounded-lg'>
-              <h3 className='text-lg font-semibold mb-4 text-primary-dark'>
-                Gastos Fijos Esperados
-              </h3>
-              <div className='space-y-2'>
-                {expectedFixedExpensesForMonth.map((fe) => {
-                  const payment = transactions.find(
-                    (t) =>
-                      t.type === 'fixed_expense' && t.fixedExpenseId === fe.id
-                  );
-                  const isPaid = !!payment;
-                  return (
-                    <div
-                      key={fe.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border ${
-                        isPaid
-                          ? 'bg-green-50 border-green-200'
-                          : 'bg-white border-zinc-200'
-                      }`}
-                    >
-                      <div className='flex-1'>
-                        <div className='flex items-center gap-2'>
-                          <span className='font-medium text-zinc-800'>
-                            {fe.name}
-                          </span>
-                          {isPaid && (
-                            <span className='text-xs bg-green-100 text-green-700 px-2 py-1 rounded'>
-                              Pagado
-                            </span>
-                          )}
-                        </div>
-                        <p className='text-sm text-zinc-600'>
-                          Día {fe.dayOfMonth} del mes
-                        </p>
-                      </div>
-                      <div className='text-right'>
-                        <p className='font-semibold text-zinc-800'>
-                          {formatCurrency(fe.amount, currency)}
-                        </p>
-                        {isPaid && payment && (
-                          <p className='text-sm text-green-600'>
-                            Real: {formatCurrency(payment.value, currency)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Ingresos Esperados */}
-          {expectedIncomesForMonth.length > 0 && (
-            <div className='mb-6 p-4 bg-blue-50 rounded-lg'>
-              <h3 className='text-lg font-semibold mb-4 text-primary-dark'>
-                Ingresos Esperados
-              </h3>
-              <div className='space-y-2'>
-                {expectedIncomesForMonth.map((ei) => {
-                  const income = transactions.find(
-                    (t) =>
-                      t.type === 'expected_income' &&
-                      t.expectedIncomeId === ei.id
-                  );
-                  const isReceived = !!income;
-                  return (
-                    <div
-                      key={ei.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border ${
-                        isReceived
-                          ? 'bg-green-50 border-green-200'
-                          : 'bg-white border-zinc-200'
-                      }`}
-                    >
-                      <div className='flex-1'>
-                        <div className='flex items-center gap-2'>
-                          <span className='font-medium text-zinc-800'>
-                            {ei.name}
-                          </span>
-                          {isReceived && (
-                            <span className='text-xs bg-green-100 text-green-700 px-2 py-1 rounded'>
-                              Recibido
-                            </span>
-                          )}
-                        </div>
-                        <p className='text-sm text-zinc-600'>
-                          Día {ei.dayOfMonth} del mes
-                        </p>
-                      </div>
-                      <div className='text-right'>
-                        <p className='font-semibold text-zinc-800'>
-                          {formatCurrency(ei.amount, currency)}
-                        </p>
-                        {isReceived && income && (
-                          <p className='text-sm text-green-600'>
-                            Real: {formatCurrency(income.value, currency)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className='flex flex-wrap gap-3 mb-6'>
@@ -758,7 +681,8 @@ const MyMonth = () => {
                             {transaction.paymentMethod}
                           </td>
                           <td className='py-3 px-4 text-right text-zinc-500'>
-                            {transaction.expectedAmount !== null
+                            {transaction.expectedAmount !== null &&
+                            transaction.expectedAmount !== undefined
                               ? formatCurrency(
                                   transaction.expectedAmount,
                                   currency
@@ -767,12 +691,16 @@ const MyMonth = () => {
                           </td>
                           <td
                             className={`py-3 px-4 text-right font-semibold ${
-                              transaction.type === 'income'
+                              transaction.type === 'expected_income' ||
+                              transaction.type === 'unexpected_income'
                                 ? 'text-green-600'
                                 : 'text-red-600'
                             }`}
                           >
-                            {transaction.type === 'income' ? '+' : '-'}
+                            {transaction.type === 'expected_income' ||
+                            transaction.type === 'unexpected_income'
+                              ? '+'
+                              : '-'}
                             {formatCurrency(transaction.value, currency)}
                           </td>
                         </tr>
