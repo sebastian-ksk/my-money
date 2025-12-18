@@ -28,9 +28,26 @@ export default function FixedExpensesSection() {
     dayOfMonth: '',
     categoryId: '',
     categoryName: '',
+    appliesToAllMonths: true,
+    selectedMonths: [] as number[],
   });
 
   const currency = userConfig?.currency || 'COP';
+
+  const monthNames = [
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
+  ];
 
   useEffect(() => {
     const userData = sessionStorage.getItem('user');
@@ -71,6 +88,12 @@ export default function FixedExpensesSection() {
     }
 
     const numericAmount = parseFloat(parseCurrencyInput(formData.amount));
+    const months = formData.appliesToAllMonths
+      ? undefined
+      : formData.selectedMonths.length > 0
+      ? formData.selectedMonths
+      : undefined;
+
     await dispatch(
       createFixedExpense({
         userId: user.uid,
@@ -79,6 +102,7 @@ export default function FixedExpensesSection() {
           amount: numericAmount,
           dayOfMonth: parseInt(formData.dayOfMonth),
           categoryId,
+          months,
         },
       })
     );
@@ -89,6 +113,8 @@ export default function FixedExpensesSection() {
       dayOfMonth: '',
       categoryId: '',
       categoryName: '',
+      appliesToAllMonths: true,
+      selectedMonths: [],
     });
     setShowModal(false);
   };
@@ -153,6 +179,9 @@ export default function FixedExpensesSection() {
                 <th className='text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700'>
                   Categoría
                 </th>
+                <th className='text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700'>
+                  Meses
+                </th>
                 <th className='text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-700'>
                   Monto
                 </th>
@@ -184,6 +213,16 @@ export default function FixedExpensesSection() {
                     <td className='py-3 px-2 sm:px-4'>
                       <span className='text-xs sm:text-sm text-zinc-600 bg-zinc-100 px-2 py-1 rounded'>
                         {category?.name || 'Sin categoría'}
+                      </span>
+                    </td>
+                    <td className='py-3 px-2 sm:px-4'>
+                      <span className='text-xs sm:text-sm text-zinc-600'>
+                        {!expense.months || expense.months.length === 0
+                          ? 'Todos'
+                          : expense.months
+                              .sort((a, b) => a - b)
+                              .map((m) => monthNames[m - 1])
+                              .join(', ')}
                       </span>
                     </td>
                     <td className='py-3 px-2 sm:px-4 text-right'>
@@ -222,7 +261,7 @@ export default function FixedExpensesSection() {
             </tbody>
             <tfoot>
               <tr className='bg-zinc-50 border-t-2 border-zinc-200'>
-                <td colSpan={3} className='py-3 px-2 sm:px-4'>
+                <td colSpan={4} className='py-3 px-2 sm:px-4'>
                   <span className='font-semibold text-sm sm:text-base text-primary-dark'>
                     Total
                   </span>
@@ -352,6 +391,82 @@ export default function FixedExpensesSection() {
                 />
               </div>
 
+              <div>
+                <label className='block text-sm font-medium mb-2 text-primary-medium'>
+                  Meses Aplicables
+                </label>
+                <div className='space-y-3'>
+                  <label className='flex items-center gap-2 cursor-pointer'>
+                    <input
+                      type='checkbox'
+                      checked={formData.appliesToAllMonths}
+                      onChange={(e) => {
+                        setFormData({
+                          ...formData,
+                          appliesToAllMonths: e.target.checked,
+                          selectedMonths: e.target.checked
+                            ? []
+                            : formData.selectedMonths,
+                        });
+                      }}
+                      className='w-4 h-4 text-primary-medium rounded focus:ring-primary-light'
+                    />
+                    <span className='text-sm text-zinc-700'>
+                      Aplica a todos los meses
+                    </span>
+                  </label>
+
+                  {!formData.appliesToAllMonths && (
+                    <div className='border border-zinc-200 rounded-lg p-3 bg-zinc-50'>
+                      <p className='text-xs text-zinc-600 mb-2'>
+                        Selecciona los meses específicos:
+                      </p>
+                      <div className='grid grid-cols-4 sm:grid-cols-6 gap-2'>
+                        {monthNames.map((month, index) => {
+                          const monthNumber = index + 1;
+                          return (
+                            <label
+                              key={monthNumber}
+                              className='flex items-center gap-1 cursor-pointer'
+                            >
+                              <input
+                                type='checkbox'
+                                checked={formData.selectedMonths.includes(
+                                  monthNumber
+                                )}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormData({
+                                      ...formData,
+                                      selectedMonths: [
+                                        ...formData.selectedMonths,
+                                        monthNumber,
+                                      ],
+                                    });
+                                  } else {
+                                    setFormData({
+                                      ...formData,
+                                      selectedMonths:
+                                        formData.selectedMonths.filter(
+                                          (m) => m !== monthNumber
+                                        ),
+                                    });
+                                  }
+                                }}
+                                className='w-4 h-4 text-primary-medium rounded focus:ring-primary-light'
+                              />
+                              <span className='text-xs text-zinc-700'>
+                                {month}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className='flex gap-3'>
                 <Button
                   type='button'
@@ -363,6 +478,8 @@ export default function FixedExpensesSection() {
                       dayOfMonth: '',
                       categoryId: '',
                       categoryName: '',
+                      appliesToAllMonths: true,
+                      selectedMonths: [],
                     });
                   }}
                   variant='outline'

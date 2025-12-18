@@ -23,6 +23,7 @@ export interface FixedExpense {
   amount: number;
   dayOfMonth: number;
   categoryId: string;
+  months?: number[]; // Array de meses (1-12). Si está vacío o undefined, aplica a todos los meses
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
@@ -33,6 +34,7 @@ export interface ExpectedIncome {
   name: string;
   amount: number;
   dayOfMonth: number;
+  months?: number[]; // Array de meses (1-12). Si está vacío o undefined, aplica a todos los meses
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }

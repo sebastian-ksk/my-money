@@ -44,6 +44,7 @@ export interface FixedExpense {
   amount: number;
   dayOfMonth: number; // Día del mes (1-31)
   categoryId: string; // Referencia a expense_categories
+  months?: number[]; // Array de meses (1-12). Si está vacío o undefined, aplica a todos los meses
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
@@ -54,6 +55,7 @@ export interface ExpectedIncome {
   name: string;
   amount: number;
   dayOfMonth: number; // Día del mes (1-31)
+  months?: number[]; // Array de meses (1-12). Si está vacío o undefined, aplica a todos los meses
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
