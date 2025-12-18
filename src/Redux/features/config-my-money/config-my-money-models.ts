@@ -3,8 +3,7 @@ import firebase from 'firebase/app';
 export interface UserConfig {
   userId: string;
   monthResetDay: number;
-  initialBalance: number;
-  initialSavings: number;
+  currency: string; // Código de moneda (COP, USD, EUR, etc.)
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
@@ -38,11 +37,31 @@ export interface ExpectedIncome {
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
 
+export interface BalanceSource {
+  id?: string;
+  userId: string;
+  name: string;
+  amount: number;
+  createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+}
+
+export interface SavingsSource {
+  id?: string;
+  userId: string;
+  name: string;
+  amount: number;
+  createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+}
+
 export interface ConfigMyMoneyState {
   userConfig: UserConfig | null;
   expenseCategories: ExpenseCategory[];
   fixedExpenses: FixedExpense[];
   expectedIncomes: ExpectedIncome[];
+  balanceSources: BalanceSource[];
+  savingsSources: SavingsSource[];
   loading: boolean;
   error: string | null;
 }

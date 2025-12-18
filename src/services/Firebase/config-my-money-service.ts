@@ -3,10 +3,28 @@ import firebase from 'firebase/app';
 
 // Modelos
 export interface UserConfig {
+  id?: string;
   userId: string;
   monthResetDay: number; // Día del mes (1-31)
-  initialBalance: number; // Valor en banco
-  initialSavings: number; // Valor en cuenta de ahorro
+  currency: string; // Código de moneda (COP, USD, EUR, etc.)
+  createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+}
+
+export interface BalanceSource {
+  id?: string;
+  userId: string;
+  name: string;
+  amount: number;
+  createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+}
+
+export interface SavingsSource {
+  id?: string;
+  userId: string;
+  name: string;
+  amount: number;
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
@@ -258,5 +276,109 @@ export const configMyMoneyService = {
 
   async deleteExpectedIncome(incomeId: string): Promise<void> {
     await firestore.collection('expected_incomes').doc(incomeId).delete();
+  },
+
+  // ========== Balance Sources (Líquido) ==========
+  async getBalanceSources(userId: string): Promise<BalanceSource[]> {
+    const sourcesRef = firestore.collection('balance_sources');
+    const querySnapshot = await sourcesRef.where('userId', '==', userId).get();
+
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as BalanceSource[];
+  },
+
+  async createBalanceSource(
+    userId: string,
+    source: Omit<BalanceSource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ): Promise<BalanceSource> {
+    const sourcesRef = firestore.collection('balance_sources');
+    const now = firebase.firestore.Timestamp.now();
+
+    const sourceData: BalanceSource = {
+      userId,
+      ...source,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const docRef = await sourcesRef.add(sourceData);
+    const doc = await docRef.get();
+    return { id: doc.id, ...doc.data() } as BalanceSource;
+  },
+
+  async updateBalanceSource(
+    sourceId: string,
+    source: Partial<
+      Omit<BalanceSource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+    >
+  ): Promise<BalanceSource> {
+    const sourceRef = firestore.collection('balance_sources').doc(sourceId);
+    const now = firebase.firestore.Timestamp.now();
+
+    await sourceRef.update({
+      ...source,
+      updatedAt: now,
+    });
+
+    const doc = await sourceRef.get();
+    return { id: doc.id, ...doc.data() } as BalanceSource;
+  },
+
+  async deleteBalanceSource(sourceId: string): Promise<void> {
+    await firestore.collection('balance_sources').doc(sourceId).delete();
+  },
+
+  // ========== Savings Sources (Ahorro) ==========
+  async getSavingsSources(userId: string): Promise<SavingsSource[]> {
+    const sourcesRef = firestore.collection('savings_sources');
+    const querySnapshot = await sourcesRef.where('userId', '==', userId).get();
+
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as SavingsSource[];
+  },
+
+  async createSavingsSource(
+    userId: string,
+    source: Omit<SavingsSource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ): Promise<SavingsSource> {
+    const sourcesRef = firestore.collection('savings_sources');
+    const now = firebase.firestore.Timestamp.now();
+
+    const sourceData: SavingsSource = {
+      userId,
+      ...source,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const docRef = await sourcesRef.add(sourceData);
+    const doc = await docRef.get();
+    return { id: doc.id, ...doc.data() } as SavingsSource;
+  },
+
+  async updateSavingsSource(
+    sourceId: string,
+    source: Partial<
+      Omit<SavingsSource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+    >
+  ): Promise<SavingsSource> {
+    const sourceRef = firestore.collection('savings_sources').doc(sourceId);
+    const now = firebase.firestore.Timestamp.now();
+
+    await sourceRef.update({
+      ...source,
+      updatedAt: now,
+    });
+
+    const doc = await sourceRef.get();
+    return { id: doc.id, ...doc.data() } as SavingsSource;
+  },
+
+  async deleteSavingsSource(sourceId: string): Promise<void> {
+    await firestore.collection('savings_sources').doc(sourceId).delete();
   },
 };

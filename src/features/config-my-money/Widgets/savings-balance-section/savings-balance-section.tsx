@@ -3,31 +3,27 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
 import {
-  loadFixedExpenses,
-  loadExpenseCategories,
-  createFixedExpense,
-  deleteFixedExpense,
-  selectFixedExpenses,
-  selectExpenseCategories,
+  loadSavingsSources,
+  createSavingsSource,
+  updateSavingsSource,
+  deleteSavingsSource,
+  selectSavingsSources,
   selectConfigLoading,
   selectUserConfig,
 } from '@/Redux/features/config-my-money';
 import { Button } from '@/components/ui';
 import { formatCurrency, parseCurrencyInput } from '@/utils/currency';
 
-export default function FixedExpensesSection() {
+export default function SavingsBalanceSection() {
   const dispatch = useAppDispatch();
-  const fixedExpenses = useAppSelector(selectFixedExpenses);
-  const categories = useAppSelector(selectExpenseCategories);
+  const savingsSources = useAppSelector(selectSavingsSources);
   const loading = useAppSelector(selectConfigLoading);
   const userConfig = useAppSelector(selectUserConfig);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     amount: '',
-    dayOfMonth: '',
-    categoryId: '',
-    categoryName: '',
   });
 
   const currency = userConfig?.currency || 'COP';
@@ -36,10 +32,14 @@ export default function FixedExpensesSection() {
     const userData = sessionStorage.getItem('user');
     if (userData) {
       const user = JSON.parse(userData);
-      dispatch(loadFixedExpenses(user.uid));
-      dispatch(loadExpenseCategories(user.uid));
+      dispatch(loadSavingsSources(user.uid));
     }
   }, [dispatch]);
+
+  const totalSavings = savingsSources.reduce(
+    (sum, source) => sum + source.amount,
+    0
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,62 +47,79 @@ export default function FixedExpensesSection() {
     if (!userData) return;
 
     const user = JSON.parse(userData);
-    let categoryId = formData.categoryId;
+    const numericAmount = parseFloat(parseCurrencyInput(formData.amount));
 
-    // Si no hay categoryId pero hay categoryName, crear la categoría
-    if (!categoryId && formData.categoryName.trim()) {
-      const { createExpenseCategory } = await import(
-        '@/Redux/features/config-my-money'
-      );
-      const categoryResult = await dispatch(
-        createExpenseCategory({
-          userId: user.uid,
-          name: formData.categoryName.trim(),
+    if (editingId) {
+      await dispatch(
+        updateSavingsSource({
+          sourceId: editingId,
+          source: {
+            name: formData.name,
+            amount: numericAmount,
+          },
         })
       );
-      if (createExpenseCategory.fulfilled.match(categoryResult)) {
-        categoryId = categoryResult.payload.id || '';
-      }
+    } else {
+      await dispatch(
+        createSavingsSource({
+          userId: user.uid,
+          source: {
+            name: formData.name,
+            amount: numericAmount,
+          },
+        })
+      );
     }
-
-    if (!categoryId) {
-      alert('Debe seleccionar o crear una categoría');
-      return;
-    }
-
-    const numericAmount = parseFloat(parseCurrencyInput(formData.amount));
-    await dispatch(
-      createFixedExpense({
-        userId: user.uid,
-        expense: {
-          name: formData.name,
-          amount: numericAmount,
-          dayOfMonth: parseInt(formData.dayOfMonth),
-          categoryId,
-        },
-      })
-    );
 
     setFormData({
       name: '',
       amount: '',
-      dayOfMonth: '',
-      categoryId: '',
-      categoryName: '',
     });
+    setEditingId(null);
     setShowModal(false);
   };
 
-  const handleDelete = async (expenseId: string) => {
-    if (confirm('¿Está seguro de eliminar este gasto fijo?')) {
-      await dispatch(deleteFixedExpense(expenseId));
+  const handleEdit = (source: {
+    id?: string;
+    name: string;
+    amount: number;
+  }) => {
+    if (source.id) {
+      setEditingId(source.id);
+      setFormData({
+        name: source.name,
+        amount: formatCurrency(source.amount, currency),
+      });
+      setShowModal(true);
     }
+  };
+
+  const handleDelete = async (sourceId: string) => {
+    if (confirm('¿Está seguro de eliminar esta fuente de ahorro?')) {
+      await dispatch(deleteSavingsSource(sourceId));
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      name: '',
+      amount: '',
+    });
+    setEditingId(null);
+    setShowModal(false);
   };
 
   return (
     <div className='bg-white rounded-lg shadow-lg p-6 mb-6'>
       <div className='flex justify-between items-center mb-4'>
-        <h3 className='text-xl font-bold text-primary-dark'>Gastos Fijos</h3>
+        <div>
+          <h3 className='text-xl font-bold text-primary-dark'>
+            Balance en Ahorro
+          </h3>
+          <p className='text-sm text-zinc-600 mt-1'>
+            Dinero reservado que no debe utilizarse para gastos
+          </p>
+        </div>
         <Button
           onClick={() => setShowModal(true)}
           variant='secondary'
@@ -123,37 +140,51 @@ export default function FixedExpensesSection() {
             </svg>
           }
         >
-          Agregar Gasto Fijo
+          Agregar Fuente
         </Button>
       </div>
 
-      {fixedExpenses.length === 0 ? (
+      {savingsSources.length === 0 ? (
         <p className='text-zinc-600 text-center py-8'>
-          No hay gastos fijos configurados
+          No hay fuentes de ahorro configuradas
         </p>
       ) : (
-        <div className='space-y-2'>
-          {fixedExpenses.map((expense) => {
-            const category = categories.find(
-              (c) => c.id === expense.categoryId
-            );
-            return (
-              <div
-                key={expense.id}
-                className='flex justify-between items-center p-4 border border-zinc-200 rounded-lg hover:bg-neutral-light'
-              >
-                <div>
-                  <p className='font-semibold text-primary-dark'>
-                    {expense.name}
-                  </p>
-                  <p className='text-sm text-zinc-600'>
-                    Día {expense.dayOfMonth} -{' '}
-                    {category?.name || 'Sin categoría'} -{' '}
-                    {formatCurrency(expense.amount, currency)}
-                  </p>
-                </div>
+        <div className='space-y-2 mb-4'>
+          {savingsSources.map((source) => (
+            <div
+              key={source.id}
+              className='flex justify-between items-center p-4 border border-zinc-200 rounded-lg hover:bg-neutral-light'
+            >
+              <div className='flex-1'>
+                <p className='font-semibold text-primary-dark'>{source.name}</p>
+                <p className='text-sm text-zinc-600'>
+                  {formatCurrency(source.amount, currency)}
+                </p>
+              </div>
+              <div className='flex gap-2'>
                 <Button
-                  onClick={() => expense.id && handleDelete(expense.id)}
+                  onClick={() => handleEdit(source)}
+                  variant='ghost'
+                  size='sm'
+                  icon={
+                    <svg
+                      className='w-4 h-4'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                      />
+                    </svg>
+                  }
+                  iconOnly
+                />
+                <Button
+                  onClick={() => source.id && handleDelete(source.id)}
                   variant='ghost'
                   size='sm'
                   icon={
@@ -174,8 +205,21 @@ export default function FixedExpensesSection() {
                   iconOnly
                 />
               </div>
-            );
-          })}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {savingsSources.length > 0 && (
+        <div className='mt-4 pt-4 border-t border-zinc-200'>
+          <div className='flex justify-between items-center'>
+            <span className='text-lg font-semibold text-primary-dark'>
+              Total Ahorro:
+            </span>
+            <span className='text-xl font-bold text-primary-medium'>
+              {formatCurrency(totalSavings, currency)}
+            </span>
+          </div>
         </div>
       )}
 
@@ -183,12 +227,12 @@ export default function FixedExpensesSection() {
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
           <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4'>
             <h4 className='text-xl font-bold mb-4 text-primary-dark'>
-              Nuevo Gasto Fijo
+              {editingId ? 'Editar Fuente' : 'Nueva Fuente de Ahorro'}
             </h4>
             <form onSubmit={handleSubmit} className='space-y-4'>
               <div>
                 <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Nombre *
+                  Nombre de la Fuente *
                 </label>
                 <input
                   type='text'
@@ -198,31 +242,13 @@ export default function FixedExpensesSection() {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder='Ej: Arriendo'
+                  placeholder='Ej: Cuenta de Ahorro, Fondo de Emergencia, etc.'
                 />
               </div>
 
               <div>
                 <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Día del Mes (1-31) *
-                </label>
-                <input
-                  type='number'
-                  min='1'
-                  max='31'
-                  required
-                  value={formData.dayOfMonth}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dayOfMonth: e.target.value })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder='Ej: 10'
-                />
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Valor Estimado *
+                  Monto *
                 </label>
                 <input
                   type='text'
@@ -253,58 +279,10 @@ export default function FixedExpensesSection() {
                 />
               </div>
 
-              <div>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Categoría
-                </label>
-                <select
-                  value={formData.categoryId}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      categoryId: e.target.value,
-                      categoryName: '',
-                    })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white mb-2'
-                >
-                  <option value=''>Seleccionar categoría existente</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-                <p className='text-xs text-zinc-600 mb-2'>O crear nueva:</p>
-                <input
-                  type='text'
-                  value={formData.categoryName}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      categoryName: e.target.value,
-                      categoryId: '',
-                    })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder='Nombre de nueva categoría'
-                  disabled={!!formData.categoryId}
-                />
-              </div>
-
               <div className='flex gap-3'>
                 <Button
                   type='button'
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData({
-                      name: '',
-                      amount: '',
-                      dayOfMonth: '',
-                      categoryId: '',
-                      categoryName: '',
-                    });
-                  }}
+                  onClick={handleCancel}
                   variant='outline'
                   size='md'
                   className='flex-1'

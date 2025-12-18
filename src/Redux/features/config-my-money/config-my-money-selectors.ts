@@ -9,6 +9,10 @@ export const selectFixedExpenses = (state: RootState) =>
   state.configMyMoney.fixedExpenses;
 export const selectExpectedIncomes = (state: RootState) =>
   state.configMyMoney.expectedIncomes;
+export const selectBalanceSources = (state: RootState) =>
+  state.configMyMoney.balanceSources;
+export const selectSavingsSources = (state: RootState) =>
+  state.configMyMoney.savingsSources;
 export const selectConfigLoading = (state: RootState) =>
   state.configMyMoney.loading;
 export const selectConfigError = (state: RootState) =>

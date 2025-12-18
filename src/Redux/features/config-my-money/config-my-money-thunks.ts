@@ -5,6 +5,8 @@ import type {
   ExpenseCategory,
   FixedExpense,
   ExpectedIncome,
+  BalanceSource,
+  SavingsSource,
 } from './config-my-money-models';
 
 // ========== User Config ==========
@@ -18,8 +20,7 @@ export const loadUserConfig = createAsyncThunk(
         ({
           userId,
           monthResetDay: 1,
-          initialBalance: 0,
-          initialSavings: 0,
+          currency: 'COP',
         } as UserConfig)
       );
     } catch (error: any) {
@@ -238,6 +239,154 @@ export const deleteExpectedIncome = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(
         error.message || 'Error al eliminar ingreso esperado'
+      );
+    }
+  }
+);
+
+// ========== Balance Sources (Líquido) ==========
+export const loadBalanceSources = createAsyncThunk(
+  'configMyMoney/loadBalanceSources',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      return await configMyMoneyService.getBalanceSources(userId);
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al cargar fuentes de balance'
+      );
+    }
+  }
+);
+
+export const createBalanceSource = createAsyncThunk(
+  'configMyMoney/createBalanceSource',
+  async (
+    {
+      userId,
+      source,
+    }: {
+      userId: string;
+      source: Omit<BalanceSource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await configMyMoneyService.createBalanceSource(userId, source);
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al crear fuente de balance'
+      );
+    }
+  }
+);
+
+export const updateBalanceSource = createAsyncThunk(
+  'configMyMoney/updateBalanceSource',
+  async (
+    {
+      sourceId,
+      source,
+    }: {
+      sourceId: string;
+      source: Partial<
+        Omit<BalanceSource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+      >;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await configMyMoneyService.updateBalanceSource(sourceId, source);
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al actualizar fuente de balance'
+      );
+    }
+  }
+);
+
+export const deleteBalanceSource = createAsyncThunk(
+  'configMyMoney/deleteBalanceSource',
+  async (sourceId: string, { rejectWithValue }) => {
+    try {
+      await configMyMoneyService.deleteBalanceSource(sourceId);
+      return sourceId;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al eliminar fuente de balance'
+      );
+    }
+  }
+);
+
+// ========== Savings Sources (Ahorro) ==========
+export const loadSavingsSources = createAsyncThunk(
+  'configMyMoney/loadSavingsSources',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      return await configMyMoneyService.getSavingsSources(userId);
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al cargar fuentes de ahorro'
+      );
+    }
+  }
+);
+
+export const createSavingsSource = createAsyncThunk(
+  'configMyMoney/createSavingsSource',
+  async (
+    {
+      userId,
+      source,
+    }: {
+      userId: string;
+      source: Omit<SavingsSource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await configMyMoneyService.createSavingsSource(userId, source);
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al crear fuente de ahorro'
+      );
+    }
+  }
+);
+
+export const updateSavingsSource = createAsyncThunk(
+  'configMyMoney/updateSavingsSource',
+  async (
+    {
+      sourceId,
+      source,
+    }: {
+      sourceId: string;
+      source: Partial<
+        Omit<SavingsSource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+      >;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await configMyMoneyService.updateSavingsSource(sourceId, source);
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al actualizar fuente de ahorro'
+      );
+    }
+  }
+);
+
+export const deleteSavingsSource = createAsyncThunk(
+  'configMyMoney/deleteSavingsSource',
+  async (sourceId: string, { rejectWithValue }) => {
+    try {
+      await configMyMoneyService.deleteSavingsSource(sourceId);
+      return sourceId;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al eliminar fuente de ahorro'
       );
     }
   }

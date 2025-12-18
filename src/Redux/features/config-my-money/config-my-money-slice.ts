@@ -14,6 +14,14 @@ import {
   createExpectedIncome,
   updateExpectedIncome,
   deleteExpectedIncome,
+  loadBalanceSources,
+  createBalanceSource,
+  updateBalanceSource,
+  deleteBalanceSource,
+  loadSavingsSources,
+  createSavingsSource,
+  updateSavingsSource,
+  deleteSavingsSource,
 } from './config-my-money-thunks';
 import type {
   ConfigMyMoneyState,
@@ -21,6 +29,8 @@ import type {
   ExpenseCategory,
   FixedExpense,
   ExpectedIncome,
+  BalanceSource,
+  SavingsSource,
 } from './config-my-money-models';
 
 const initialState: ConfigMyMoneyState = {
@@ -28,6 +38,8 @@ const initialState: ConfigMyMoneyState = {
   expenseCategories: [],
   fixedExpenses: [],
   expectedIncomes: [],
+  balanceSources: [],
+  savingsSources: [],
   loading: false,
   error: null,
 };
@@ -167,6 +179,70 @@ const configMyMoneySlice = createSlice({
       .addCase(deleteExpectedIncome.fulfilled, (state, action) => {
         state.expectedIncomes = state.expectedIncomes.filter(
           (i) => i.id !== action.meta.arg
+        );
+      })
+      // Load Balance Sources
+      .addCase(loadBalanceSources.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadBalanceSources.fulfilled, (state, action) => {
+        state.loading = false;
+        state.balanceSources = action.payload;
+      })
+      .addCase(loadBalanceSources.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Create Balance Source
+      .addCase(createBalanceSource.fulfilled, (state, action) => {
+        state.balanceSources.push(action.payload);
+      })
+      // Update Balance Source
+      .addCase(updateBalanceSource.fulfilled, (state, action) => {
+        const index = state.balanceSources.findIndex(
+          (s) => s.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.balanceSources[index] = action.payload;
+        }
+      })
+      // Delete Balance Source
+      .addCase(deleteBalanceSource.fulfilled, (state, action) => {
+        state.balanceSources = state.balanceSources.filter(
+          (s) => s.id !== action.meta.arg
+        );
+      })
+      // Load Savings Sources
+      .addCase(loadSavingsSources.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadSavingsSources.fulfilled, (state, action) => {
+        state.loading = false;
+        state.savingsSources = action.payload;
+      })
+      .addCase(loadSavingsSources.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Create Savings Source
+      .addCase(createSavingsSource.fulfilled, (state, action) => {
+        state.savingsSources.push(action.payload);
+      })
+      // Update Savings Source
+      .addCase(updateSavingsSource.fulfilled, (state, action) => {
+        const index = state.savingsSources.findIndex(
+          (s) => s.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.savingsSources[index] = action.payload;
+        }
+      })
+      // Delete Savings Source
+      .addCase(deleteSavingsSource.fulfilled, (state, action) => {
+        state.savingsSources = state.savingsSources.filter(
+          (s) => s.id !== action.meta.arg
         );
       });
   },

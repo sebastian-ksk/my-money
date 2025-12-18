@@ -8,19 +8,24 @@ import {
   deleteExpectedIncome,
   selectExpectedIncomes,
   selectConfigLoading,
+  selectUserConfig,
 } from '@/Redux/features/config-my-money';
 import { Button } from '@/components/ui';
+import { formatCurrency, parseCurrencyInput } from '@/utils/currency';
 
 export default function ExpectedIncomesSection() {
   const dispatch = useAppDispatch();
   const expectedIncomes = useAppSelector(selectExpectedIncomes);
   const loading = useAppSelector(selectConfigLoading);
+  const userConfig = useAppSelector(selectUserConfig);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     amount: '',
     dayOfMonth: '',
   });
+
+  const currency = userConfig?.currency || 'COP';
 
   useEffect(() => {
     const userData = sessionStorage.getItem('user');
@@ -36,12 +41,13 @@ export default function ExpectedIncomesSection() {
     if (!userData) return;
 
     const user = JSON.parse(userData);
+    const numericAmount = parseFloat(parseCurrencyInput(formData.amount));
     await dispatch(
       createExpectedIncome({
         userId: user.uid,
         income: {
           name: formData.name,
-          amount: parseFloat(formData.amount),
+          amount: numericAmount,
           dayOfMonth: parseInt(formData.dayOfMonth),
         },
       })
@@ -105,7 +111,8 @@ export default function ExpectedIncomesSection() {
               <div>
                 <p className='font-semibold text-primary-dark'>{income.name}</p>
                 <p className='text-sm text-zinc-600'>
-                  Día {income.dayOfMonth} - ${income.amount.toLocaleString()}
+                  Día {income.dayOfMonth} -{' '}
+                  {formatCurrency(income.amount, currency)}
                 </p>
               </div>
               <Button
@@ -180,15 +187,31 @@ export default function ExpectedIncomesSection() {
                   Valor Estimado *
                 </label>
                 <input
-                  type='number'
-                  step='0.01'
+                  type='text'
                   required
                   value={formData.amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, amount: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const rawValue = parseCurrencyInput(e.target.value);
+                    if (rawValue !== '' || e.target.value === '') {
+                      const num = rawValue ? parseFloat(rawValue) : 0;
+                      setFormData({
+                        ...formData,
+                        amount: num > 0 ? formatCurrency(num, currency) : '',
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const rawValue = parseCurrencyInput(e.target.value);
+                    if (rawValue) {
+                      const num = parseFloat(rawValue);
+                      setFormData({
+                        ...formData,
+                        amount: formatCurrency(num, currency),
+                      });
+                    }
+                  }}
                   className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder='0.00'
+                  placeholder={formatCurrency(0, currency)}
                 />
               </div>
 
