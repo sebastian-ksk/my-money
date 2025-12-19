@@ -48,6 +48,22 @@ export const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredActionPaths: [
+          'payload.createdAt',
+          'payload.updatedAt',
+          'payload.date',
+          'meta.arg.transaction.date',
+          'meta.arg.transaction.createdAt',
+          'meta.arg.transaction.updatedAt',
+        ],
+        ignoredPaths: [
+          'myMonth.transactions',
+          'myMonth.monthlyLiquidity',
+          'configMyMoney.savingsSources',
+          'configMyMoney.balanceSources',
+          'configMyMoney.fixedExpenses',
+          'configMyMoney.expectedIncomes',
+        ],
       },
     }).concat(autoMigrationMiddleware),
   devTools: process.env.NODE_ENV !== 'production',

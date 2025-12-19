@@ -10,9 +10,12 @@ import {
   selectUserConfig,
   selectFixedExpenses,
   selectExpectedIncomes,
+  selectSavingsSources,
   loadUserConfig,
   loadFixedExpenses,
   loadExpectedIncomes,
+  loadSavingsSources,
+  createSavingsSource,
 } from '@/Redux/features/config-my-money';
 import {
   selectTransactions,
@@ -36,6 +39,7 @@ type ModalType =
   | 'income'
   | 'regularExpense'
   | 'liquidity'
+  | 'savings'
   | null;
 
 const MyMonth = () => {
@@ -44,6 +48,7 @@ const MyMonth = () => {
   const userConfig = useAppSelector(selectUserConfig);
   const fixedExpenses = useAppSelector(selectFixedExpenses);
   const expectedIncomes = useAppSelector(selectExpectedIncomes);
+  const savingsSources = useAppSelector(selectSavingsSources);
   const transactions = useAppSelector(selectTransactions);
   const totalFixedPayments = useAppSelector(selectTotalFixedExpensePayments);
   const totalIncomes = useAppSelector(selectTotalRealIncomes);
@@ -63,6 +68,8 @@ const MyMonth = () => {
     value: '',
     concept: '',
     paymentMethod: 'efectivo',
+    savingsSourceId: '',
+    newSavingsSourceName: '',
   });
   const [liquidityFormData, setLiquidityFormData] = useState({
     realAmount: '',
@@ -95,6 +102,7 @@ const MyMonth = () => {
       // Cargar datos de configuración
       dispatch(loadFixedExpenses(user.uid));
       dispatch(loadExpectedIncomes(user.uid));
+      dispatch(loadSavingsSources(user.uid));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, dispatch]);
@@ -180,6 +188,8 @@ const MyMonth = () => {
       value: '',
       concept: '',
       paymentMethod: 'efectivo',
+      savingsSourceId: '',
+      newSavingsSourceName: '',
     });
   };
 
@@ -197,6 +207,8 @@ const MyMonth = () => {
       value: '',
       concept: '',
       paymentMethod: 'efectivo',
+      savingsSourceId: '',
+      newSavingsSourceName: '',
     });
   };
 
@@ -210,6 +222,26 @@ const MyMonth = () => {
       value: '',
       concept: '',
       paymentMethod: 'efectivo',
+      savingsSourceId: '',
+      newSavingsSourceName: '',
+    });
+  };
+
+  const handleOpenSavingsModal = () => {
+    if (user?.uid && savingsSources.length === 0) {
+      dispatch(loadSavingsSources(user.uid));
+    }
+    setShowModal('savings');
+    setFormData({
+      fixedExpenseId: '',
+      expectedAmount: '',
+      realAmount: '',
+      expectedIncomeId: '',
+      value: '',
+      concept: '',
+      paymentMethod: 'efectivo',
+      savingsSourceId: '',
+      newSavingsSourceName: '',
     });
   };
 
@@ -293,6 +325,8 @@ const MyMonth = () => {
         value: '',
         concept: '',
         paymentMethod: 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
       });
     } catch (error) {
       console.error('Error al guardar pago fijo:', error);
@@ -348,6 +382,8 @@ const MyMonth = () => {
           value: '',
           concept: '',
           paymentMethod: 'efectivo',
+          savingsSourceId: '',
+          newSavingsSourceName: '',
         });
       } catch (error) {
         console.error('Error al guardar ingreso esperado:', error);
@@ -388,6 +424,8 @@ const MyMonth = () => {
           value: '',
           concept: '',
           paymentMethod: 'efectivo',
+          savingsSourceId: '',
+          newSavingsSourceName: '',
         });
       } catch (error) {
         console.error('Error al guardar ingreso inesperado:', error);
@@ -438,9 +476,93 @@ const MyMonth = () => {
         value: '',
         concept: '',
         paymentMethod: 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
       });
     } catch (error) {
       console.error('Error al guardar gasto:', error);
+    }
+  };
+
+  const handleSubmitSavings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.uid || !formData.value) return;
+
+    let savingsSourceId = formData.savingsSourceId;
+
+    // Si el usuario quiere crear un nuevo savings source
+    if (formData.savingsSourceId === 'new' && formData.newSavingsSourceName) {
+      try {
+        const newSource = await dispatch(
+          createSavingsSource({
+            userId: user.uid,
+            source: {
+              name: formData.newSavingsSourceName,
+              amount: 0, // Se actualizará con las transacciones
+            },
+          })
+        ).unwrap();
+
+        savingsSourceId = newSource.id;
+        // Recargar savings sources
+        await dispatch(loadSavingsSources(user.uid));
+      } catch (error) {
+        console.error('Error al crear fuente de ahorro:', error);
+        return;
+      }
+    }
+
+    if (!savingsSourceId) {
+      alert('Debe seleccionar o crear una fuente de ahorro');
+      return;
+    }
+
+    const savingsSource = savingsSources.find(
+      (ss) => ss.id === savingsSourceId
+    );
+    if (!savingsSource) {
+      alert('Fuente de ahorro no encontrada');
+      return;
+    }
+
+    try {
+      await dispatch(
+        createTransaction({
+          userId: user.uid,
+          transaction: {
+            type: 'savings',
+            value: parseFloat(formData.value),
+            concept: savingsSource.name,
+            paymentMethod: formData.paymentMethod,
+            date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
+            monthPeriod: currentPeriod,
+            savingsSourceId,
+          },
+        })
+      ).unwrap();
+
+      // Recargar transacciones después de crear
+      await dispatch(
+        loadTransactions({
+          userId: user.uid,
+          monthPeriod: currentPeriod,
+        })
+      ).unwrap();
+
+      setShowModal(null);
+      setFormData({
+        fixedExpenseId: '',
+        expectedAmount: '',
+        realAmount: '',
+        expectedIncomeId: '',
+        value: '',
+        concept: '',
+        paymentMethod: 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
+      });
+    } catch (error) {
+      console.error('Error al guardar ahorro:', error);
     }
   };
 
@@ -545,13 +667,16 @@ const MyMonth = () => {
   const mappedTransactions = transactions.map((t) => {
     let concept = t.concept;
 
-    // Obtener el nombre del gasto fijo o ingreso esperado si aplica
+    // Obtener el nombre del gasto fijo, ingreso esperado o savings source si aplica
     if (t.type === 'fixed_expense' && t.fixedExpenseId) {
       const fe = fixedExpenses.find((fe) => fe.id === t.fixedExpenseId);
       if (fe) concept = fe.name;
     } else if (t.type === 'expected_income' && t.expectedIncomeId) {
       const ei = expectedIncomes.find((ei) => ei.id === t.expectedIncomeId);
       if (ei) concept = ei.name;
+    } else if (t.type === 'savings' && t.savingsSourceId) {
+      const ss = savingsSources.find((ss) => ss.id === t.savingsSourceId);
+      if (ss) concept = ss.name;
     }
 
     return {
@@ -582,18 +707,6 @@ const MyMonth = () => {
         >
           {/* Balance Section */}
           <div className='mb-6'>
-            <div className='text-sm text-zinc-600 mb-2'>
-              Balance: Líquido Inicial {formatCurrency(totalLiquid, currency)} +
-              Ingresos {formatCurrency(totalIncomes, currency)} - Gastos{' '}
-              {formatCurrency(totalExpenses, currency)} ={' '}
-              <span
-                className={`font-semibold ${
-                  balance >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {formatCurrency(balance, currency)}
-              </span>
-            </div>
             <div className='flex items-center gap-3 text-sm'>
               <div className='text-zinc-600'>
                 <span className='font-medium'>Líquido Inicial Esperado:</span>{' '}
@@ -708,9 +821,33 @@ const MyMonth = () => {
 
           {/* Transactions Table */}
           <div className='mt-6'>
-            <h3 className='text-lg font-semibold mb-4 text-primary-dark'>
-              Transacciones del Mes
-            </h3>
+            <div className='flex justify-between items-center mb-4'>
+              <h3 className='text-lg font-semibold text-primary-dark'>
+                Transacciones del Mes
+              </h3>
+              <Button
+                onClick={handleOpenSavingsModal}
+                variant='secondary'
+                size='md'
+                icon={
+                  <svg
+                    className='w-5 h-5'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                    />
+                  </svg>
+                }
+              >
+                Agregar Ahorro
+              </Button>
+            </div>
             {loading ? (
               <div className='text-center py-12'>
                 <p className='text-zinc-600'>Cargando transacciones...</p>
@@ -770,6 +907,8 @@ const MyMonth = () => {
                               ? 'Ingreso Esperado'
                               : transaction.type === 'unexpected_income'
                               ? 'Ingreso Inesperado'
+                              : transaction.type === 'savings'
+                              ? 'Ahorro'
                               : 'Gasto'}
                           </td>
                           <td className='py-3 px-4 text-zinc-600'>
@@ -1167,6 +1306,132 @@ const MyMonth = () => {
                   size='md'
                   className='flex-1'
                   disabled={!liquidityFormData.realAmount}
+                >
+                  Guardar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Ahorro */}
+      {showModal === 'savings' && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
+            <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
+              Agregar Ahorro
+            </h3>
+            <form onSubmit={handleSubmitSavings}>
+              <div className='mb-4'>
+                <label className='block text-sm font-medium mb-2 text-primary-medium'>
+                  Fuente de Ahorro *
+                </label>
+                <select
+                  required
+                  value={formData.savingsSourceId}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      savingsSourceId: e.target.value,
+                      newSavingsSourceName: '',
+                    })
+                  }
+                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
+                  aria-label='Fuente de ahorro'
+                >
+                  <option value=''>Seleccione una fuente de ahorro</option>
+                  {savingsSources.map((ss) => (
+                    <option key={ss.id} value={ss.id}>
+                      {ss.name}
+                    </option>
+                  ))}
+                  <option value='new'>+ Crear nueva fuente de ahorro</option>
+                </select>
+              </div>
+
+              {formData.savingsSourceId === 'new' && (
+                <div className='mb-4'>
+                  <label className='block text-sm font-medium mb-2 text-primary-medium'>
+                    Nombre de la Nueva Fuente de Ahorro *
+                  </label>
+                  <input
+                    type='text'
+                    required
+                    value={formData.newSavingsSourceName}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        newSavingsSourceName: e.target.value,
+                      })
+                    }
+                    className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
+                    placeholder='Ej: Cuenta de ahorros, Caja fuerte, etc.'
+                  />
+                </div>
+              )}
+
+              <div className='mb-4'>
+                <label className='block text-sm font-medium mb-2 text-primary-medium'>
+                  Valor *
+                </label>
+                <input
+                  type='number'
+                  step='0.01'
+                  required
+                  value={formData.value}
+                  onChange={(e) =>
+                    setFormData({ ...formData, value: e.target.value })
+                  }
+                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
+                  placeholder='0.00'
+                />
+              </div>
+
+              <div className='mb-6'>
+                <label className='block text-sm font-medium mb-2 text-primary-medium'>
+                  Medio de Pago *
+                </label>
+                <select
+                  required
+                  value={formData.paymentMethod}
+                  onChange={(e) =>
+                    setFormData({ ...formData, paymentMethod: e.target.value })
+                  }
+                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
+                  aria-label='Medio de pago'
+                >
+                  <option value='efectivo'>Efectivo</option>
+                  <option value='tarjeta_debito'>Tarjeta Débito</option>
+                  <option value='tarjeta_credito'>Tarjeta Crédito</option>
+                  <option value='transferencia'>Transferencia</option>
+                  <option value='nequi'>Nequi</option>
+                  <option value='daviplata'>Daviplata</option>
+                  <option value='otro'>Otro</option>
+                </select>
+              </div>
+
+              <div className='flex gap-3'>
+                <Button
+                  type='button'
+                  onClick={() => setShowModal(null)}
+                  variant='outline'
+                  size='md'
+                  className='flex-1'
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type='submit'
+                  variant='secondary'
+                  size='md'
+                  className='flex-1'
+                  disabled={
+                    !formData.savingsSourceId ||
+                    !formData.value ||
+                    (formData.savingsSourceId === 'new' &&
+                      !formData.newSavingsSourceName)
+                  }
                 >
                   Guardar
                 </Button>

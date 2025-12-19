@@ -4,7 +4,8 @@ export type TransactionType =
   | 'fixed_expense' // Gasto fijo del mes (con referencia a fixedExpenseId)
   | 'expected_income' // Ingreso esperado (con referencia a expectedIncomeId)
   | 'unexpected_income' // Ingreso inesperado (con descripción)
-  | 'regular_expense'; // Gasto eventual (con descripción)
+  | 'regular_expense' // Gasto eventual (con descripción)
+  | 'savings'; // Ahorro (con referencia a savingsSourceId)
 
 export interface Transaction {
   id?: string;
@@ -20,6 +21,7 @@ export interface Transaction {
   // Referencias opcionales según el tipo
   fixedExpenseId?: string; // Para type: 'fixed_expense'
   expectedIncomeId?: string; // Para type: 'expected_income'
+  savingsSourceId?: string; // Para type: 'savings'
 
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
