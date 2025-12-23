@@ -1,4 +1,4 @@
-import { RootState } from '../../store/store';
+import type { RootState } from '../../store/types';
 
 export const selectConfigMyMoney = (state: RootState) => state.configMyMoney;
 export const selectUserConfig = (state: RootState) =>

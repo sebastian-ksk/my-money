@@ -1,4 +1,4 @@
-import { RootState } from '../../store/store';
+import type { RootState } from '../../store/types';
 
 export const selectMyMonth = (state: RootState) => state.myMonth;
 export const selectTransactions = (state: RootState) =>
