@@ -11,6 +11,7 @@ services:
         - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
         - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
         - NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}
+    container_name: my-money
     ports:
       - "3000:3000"
     environment:
@@ -30,6 +31,7 @@ services:
       - "traefik.http.routers.mymoney.rule=Host(`138.68.227.88`)"
       - "traefik.http.routers.mymoney.entrypoints=web"
       - "traefik.http.services.mymoney.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik_network"
     networks:
       - traefik_network
 

@@ -9,6 +9,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Verificar Traefik y red
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo "🔍 Verificando Traefik..."
+            if ! docker ps | grep -q traefik; then
+              echo "⚠️ Traefik no está corriendo"
+            else
+              echo "✅ Traefik está corriendo"
+            fi
+
+            echo "🔍 Verificando red traefik_network..."
+            if ! docker network ls | grep -q traefik_network; then
+              echo "📦 Creando red traefik_network..."
+              docker network create traefik_network
+            else
+              echo "✅ Red traefik_network existe"
+            fi
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
@@ -37,3 +59,9 @@ jobs:
             echo ""
             echo "📋 Últimos logs:"
             docker logs --tail 50 my-money 2>&1 || echo "❌ No se pudieron obtener logs"
+            echo ""
+            echo "🔍 Verificando conexión a Traefik:"
+            docker network inspect traefik_network --format '{{range .Containers}}{{.Name}} {{end}}' || echo "❌ Error al inspeccionar red"
+            echo ""
+            echo "📋 Logs de Traefik (últimas 20 líneas):"
+            docker logs --tail 20 traefik 2>&1 || echo "⚠️ No se pudieron obtener logs de Traefik"
