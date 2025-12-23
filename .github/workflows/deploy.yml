@@ -44,6 +44,8 @@ jobs:
             docker compose up -d --build --remove-orphans
             docker image prune -f
             echo "✅ Deploy completado"
+            echo "🔄 Forzando recarga de Traefik..."
+            docker restart traefik 2>/dev/null || echo "⚠️ No se pudo reiniciar Traefik (puede que no esté corriendo o tenga otro nombre)"
 
       - name: Wait and show logs
         uses: appleboy/ssh-action@master
