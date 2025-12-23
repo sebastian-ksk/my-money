@@ -1,4 +1,5 @@
-import { getDataConnectInstance } from '@/config/firebase';
+// TODO: Implementar cuando Firebase Data Connect esté disponible
+// import { getDataConnectInstance } from '@/config/firebase';
 // Las funciones executeQuery y executeMutation se importarán del SDK generado
 // Por ahora usamos tipos temporales
 type QueryRequest = any;
@@ -6,6 +7,8 @@ type MutationRequest = any;
 
 // Helpers para ejecutar queries y mutations
 // Estos se reemplazarán con el SDK generado de Data Connect
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 const executeQuery = async (dataConnect: any, request: QueryRequest) => {
   // TODO: Reemplazar con el SDK generado de Firebase Data Connect
   const { executeQuery: execQuery } = await import('firebase/data-connect');
@@ -19,6 +22,7 @@ const executeMutation = async (dataConnect: any, request: MutationRequest) => {
   );
   return execMutation(dataConnect, request);
 };
+*/
 
 // Tipos base
 export interface Usuario {
@@ -115,11 +119,16 @@ export interface GastoFijo {
 }
 
 // Helper para obtener dataConnect
+// TODO: Descomentar cuando getDataConnectInstance esté disponible
+/*
 const getDataConnect = async () => {
   return await getDataConnectInstance();
 };
+*/
 
 // Servicio de Usuarios
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 export const usuarioService = {
   async getById(id: string): Promise<Usuario | null> {
     const dataConnect = await getDataConnect();
@@ -149,8 +158,11 @@ export const usuarioService = {
     return result.data?.usuario as Usuario;
   },
 };
+*/
 
 // Servicio de Configuración
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 export const configuracionService = {
   async getByUsuarioId(
     usuario_id: string
@@ -198,8 +210,11 @@ export const configuracionService = {
     return result.data?.configuracion as ConfiguracionUsuario;
   },
 };
+*/
 
 // Servicio de Períodos
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 export const periodoService = {
   async getById(id: string): Promise<Periodo | null> {
     const dataConnect = await getDataConnect();
@@ -271,8 +286,11 @@ export const periodoService = {
     return result.data?.periodo as Periodo;
   },
 };
+*/
 
 // Servicio de Transacciones
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 export const transaccionService = {
   async list(usuario_id: string, periodo_id?: string): Promise<Transaccion[]> {
     const dataConnect = await getDataConnect();
@@ -328,8 +346,11 @@ export const transaccionService = {
     await executeMutation(dataConnect, request);
   },
 };
+*/
 
 // Servicio de Categorías
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 export const categoriaService = {
   async list(usuario_id: string, tipo?: string): Promise<Categoria[]> {
     const dataConnect = await getDataConnect();
@@ -357,8 +378,11 @@ export const categoriaService = {
     return result.data?.categoria as Categoria;
   },
 };
+*/
 
 // Servicio de Cuentas
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 export const cuentaService = {
   async list(usuario_id: string): Promise<Cuenta[]> {
     const dataConnect = await getDataConnect();
@@ -386,8 +410,11 @@ export const cuentaService = {
     return result.data?.cuenta as Cuenta;
   },
 };
+*/
 
 // Servicio de Presupuestos
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 export const presupuestoService = {
   async list(periodo_id: string): Promise<Presupuesto[]> {
     const dataConnect = await getDataConnect();
@@ -431,8 +458,11 @@ export const presupuestoService = {
     return result.data?.presupuesto as Presupuesto;
   },
 };
+*/
 
 // Servicio de Ahorros
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 export const ahorroService = {
   async list(usuario_id: string): Promise<Ahorro[]> {
     const dataConnect = await getDataConnect();
@@ -476,8 +506,11 @@ export const ahorroService = {
     return result.data?.ahorro as Ahorro;
   },
 };
+*/
 
 // Servicio de Gastos Fijos
+// TODO: Descomentar cuando Firebase Data Connect esté disponible
+/*
 export const gastoFijoService = {
   async list(usuario_id: string): Promise<GastoFijo[]> {
     const dataConnect = await getDataConnect();
@@ -505,3 +538,4 @@ export const gastoFijoService = {
     return result.data?.gasto_fijo as GastoFijo;
   },
 };
+*/

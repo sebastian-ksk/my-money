@@ -503,6 +503,10 @@ const MyMonth = () => {
           })
         ).unwrap();
 
+        if (!newSource.id) {
+          alert('Error al crear fuente de ahorro: no se obtuvo ID');
+          return;
+        }
         savingsSourceId = newSource.id;
         // Recargar savings sources
         await dispatch(loadSavingsSources(user.uid));
