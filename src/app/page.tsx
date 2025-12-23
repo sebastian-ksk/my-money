@@ -10,7 +10,7 @@ export default function Home() {
             <div className='w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white text-xl bg-primary-dark'>
               M
             </div>
-            <h1 className='text-2xl font-bold text-primary-dark'>MyMoney</h1>
+            <h1 className='text-2xl font-bold text-primary-dark'>My-Money</h1>
           </div>
           <nav className='flex items-center gap-4'>
             <ButtonLink href='/auth/login' variant='ghost' size='md'>
