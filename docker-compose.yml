@@ -28,9 +28,15 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
+      # Router HTTP
       - "traefik.http.routers.mymoney.rule=Host(`138.68.227.88`)"
       - "traefik.http.routers.mymoney.entrypoints=web"
       - "traefik.http.services.mymoney.loadbalancer.server.port=3000"
+      # Router HTTPS (opcional, solo si Traefik tiene websecure configurado)
+      - "traefik.http.routers.mymoney-secure.rule=Host(`138.68.227.88`)"
+      - "traefik.http.routers.mymoney-secure.entrypoints=websecure"
+      - "traefik.http.routers.mymoney-secure.tls=true"
+      - "traefik.http.routers.mymoney-secure.service=mymoney"
     networks:
       - traefik_network
 
