@@ -23,21 +23,21 @@ services:
       - NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}
     env_file:
       - .env
-    # No exponer puerto directamente, solo a través de Traefik
-    # ports:
-    #   - "3000:3000"
+    # Exponer puerto 8080 directamente (alternativa a Traefik)
+    ports:
+      - "8080:3000"
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
       # Middleware para quitar el prefijo /my-money antes de enviar a Next.js
       - "traefik.http.middlewares.mymoney-stripprefix.stripprefix.prefixes=/my-money"
-      # Router HTTP con path /my-money
-      - "traefik.http.routers.mymoney.rule=Host(`138.68.227.88`) && PathPrefix(`/my-money`)"
-      - "traefik.http.routers.mymoney.entrypoints=web"
-      - "traefik.http.routers.mymoney.middlewares=mymoney-stripprefix"
-      - "traefik.http.routers.mymoney.priority=10"
+      # Router HTTP en puerto 8080 con path /my-money
+      - "traefik.http.routers.mymoney-8080.rule=Host(`138.68.227.88`) && PathPrefix(`/my-money`)"
+      - "traefik.http.routers.mymoney-8080.entrypoints=web"
+      - "traefik.http.routers.mymoney-8080.middlewares=mymoney-stripprefix"
+      - "traefik.http.routers.mymoney-8080.priority=10"
       - "traefik.http.services.mymoney.loadbalancer.server.port=3000"
-      # Router HTTPS con path /my-money (opcional, solo si Traefik tiene websecure configurado)
+      # Router HTTPS con path /my-money
       - "traefik.http.routers.mymoney-secure.rule=Host(`138.68.227.88`) && PathPrefix(`/my-money`)"
       - "traefik.http.routers.mymoney-secure.entrypoints=websecure"
       - "traefik.http.routers.mymoney-secure.tls=true"
