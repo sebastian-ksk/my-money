@@ -46,6 +46,9 @@ jobs:
             echo "✅ Deploy completado"
             echo "🔄 Forzando recarga de Traefik..."
             docker restart traefik 2>/dev/null || echo "⚠️ No se pudo reiniciar Traefik (puede que no esté corriendo o tenga otro nombre)"
+            echo ""
+            echo "📋 Verificando que el contenedor está en la red traefik_network:"
+            docker inspect my-money --format '{{range $net, $conf := .NetworkSettings.Networks}}{{$net}} {{end}}' || echo "❌ Error al verificar red"
 
       - name: Wait and show logs
         uses: appleboy/ssh-action@master
