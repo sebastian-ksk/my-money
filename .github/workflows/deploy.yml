@@ -21,6 +21,8 @@ jobs:
               echo "⚠️ Traefik no está corriendo"
             else
               echo "✅ Traefik está corriendo"
+              echo "🔍 Verificando puertos de Traefik:"
+              docker ps | grep traefik | grep -E "0.0.0.0:(80|443)->" && echo "✅ Traefik está escuchando en puertos 80/443" || echo "⚠️ Traefik NO está escuchando en puertos 80/443 (está usando otros puertos)"
             fi
 
             echo "🔍 Verificando red traefik_network..."
