@@ -35,12 +35,14 @@ services:
       - "traefik.http.routers.mymoney.rule=Host(`138.68.227.88`) && PathPrefix(`/my-money`)"
       - "traefik.http.routers.mymoney.entrypoints=web"
       - "traefik.http.routers.mymoney.middlewares=mymoney-stripprefix"
+      - "traefik.http.routers.mymoney.priority=10"
       - "traefik.http.services.mymoney.loadbalancer.server.port=3000"
       # Router HTTPS con path /my-money (opcional, solo si Traefik tiene websecure configurado)
       - "traefik.http.routers.mymoney-secure.rule=Host(`138.68.227.88`) && PathPrefix(`/my-money`)"
       - "traefik.http.routers.mymoney-secure.entrypoints=websecure"
       - "traefik.http.routers.mymoney-secure.tls=true"
       - "traefik.http.routers.mymoney-secure.middlewares=mymoney-stripprefix"
+      - "traefik.http.routers.mymoney-secure.priority=10"
       - "traefik.http.routers.mymoney-secure.service=mymoney"
     networks:
       - traefik_network
