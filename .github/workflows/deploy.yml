@@ -22,7 +22,16 @@ jobs:
             else
               echo "✅ Traefik está corriendo"
               echo "🔍 Verificando puertos de Traefik:"
-              docker ps | grep traefik | grep -E "0.0.0.0:(80|443)->" && echo "✅ Traefik está escuchando en puertos 80/443" || echo "⚠️ Traefik NO está escuchando en puertos 80/443 (está usando otros puertos)"
+              docker ps | grep traefik
+              echo ""
+              echo "🔍 Verificando si Traefik escucha en puerto 80:"
+              docker ps | grep traefik | grep -E "0.0.0.0:80->" && echo "✅ Traefik está escuchando en puerto 80" || echo "❌ Traefik NO está escuchando en puerto 80"
+              echo ""
+              echo "🔍 Verificando si Traefik escucha en puerto 443:"
+              docker ps | grep traefik | grep -E "0.0.0.0:443->" && echo "✅ Traefik está escuchando en puerto 443" || echo "⚠️ Traefik no escucha en puerto 443"
+              echo ""
+              echo "🔍 Verificando puertos abiertos en el sistema:"
+              netstat -tlnp | grep -E ":(80|443|8080)" || ss -tlnp | grep -E ":(80|443|8080)" || echo "⚠️ No se pudo verificar puertos"
             fi
 
             echo "🔍 Verificando red traefik_network..."
@@ -96,3 +105,12 @@ jobs:
             echo ""
             echo "🔍 Probando acceso a /my-money desde Traefik:"
             curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" -H "Host: 138.68.227.88" http://localhost/my-money 2>&1 || echo "⚠️ No se pudo probar la ruta"
+            echo ""
+            echo "🔍 Verificando firewall (ufw):"
+            sudo ufw status 2>/dev/null || echo "⚠️ ufw no está disponible o requiere permisos"
+            echo ""
+            echo "🔍 Verificando si el puerto 80 está abierto externamente:"
+            curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" -m 5 http://138.68.227.88/ 2>&1 || echo "⚠️ No se pudo conectar al puerto 80 desde el servidor"
+            echo ""
+            echo "🔍 Verificando configuración de Traefik (entrypoints):"
+            docker exec traefik cat /etc/traefik/traefik.yml 2>/dev/null | grep -A 5 entrypoints || docker exec traefik cat /traefik.yml 2>/dev/null | grep -A 5 entrypoints || echo "⚠️ No se pudo leer configuración de Traefik"
