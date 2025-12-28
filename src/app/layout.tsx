@@ -4,6 +4,7 @@ import './globals.css';
 import DirectionProvider from '@/components/DirectionProvider';
 import MountedProvider from '@/components/MountedProvider';
 import ReduxProvider from '@/Redux/providers/ReduxProvider';
+import { ConfirmModalProvider } from '@/components/ui';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -31,9 +32,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ReduxProvider>
-          <DirectionProvider direction='ltr'>
-            <MountedProvider>{children}</MountedProvider>
-          </DirectionProvider>
+          <ConfirmModalProvider>
+            <DirectionProvider direction='ltr'>
+              <MountedProvider>{children}</MountedProvider>
+            </DirectionProvider>
+          </ConfirmModalProvider>
         </ReduxProvider>
       </body>
     </html>

@@ -28,17 +28,19 @@ import {
 import {
   loadTransactions,
   createTransaction,
+  updateTransaction,
+  deleteTransaction,
   loadMonthlyLiquidity,
-  updateMonthlyLiquidity,
 } from '@/Redux/features/my-month/my-month-thunks';
 import { calculateMonthPeriod } from '@/services/Firebase/my-month-service';
 import { formatCurrency } from '@/utils/currency';
+import type { Transaction } from '@/Redux/features/my-month/my-month-models';
+import { useConfirm } from '@/components/ui';
 
 type ModalType =
   | 'fixedExpense'
   | 'income'
   | 'regularExpense'
-  | 'liquidity'
   | 'savings'
   | null;
 
@@ -55,11 +57,14 @@ const MyMonth = () => {
   const totalRegularExpenses = useAppSelector(selectTotalRegularExpenses);
   const loading = useAppSelector(selectMyMonthLoading);
   const monthlyLiquidity = useAppSelector(selectMonthlyLiquidity);
+  const confirm = useConfirm();
 
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [showModal, setShowModal] = useState<ModalType>(null);
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
   const [formData, setFormData] = useState({
     fixedExpenseId: '',
     expectedAmount: '',
@@ -70,9 +75,6 @@ const MyMonth = () => {
     paymentMethod: 'efectivo',
     savingsSourceId: '',
     newSavingsSourceName: '',
-  });
-  const [liquidityFormData, setLiquidityFormData] = useState({
-    realAmount: '',
   });
 
   // Log para debugging
@@ -87,11 +89,9 @@ const MyMonth = () => {
     monthResetDay
   );
 
-  // Calcular balance: líquido inicial + ingresos reales - gastos (fijos + eventuales)
-  const totalLiquid =
-    monthlyLiquidity?.realAmount ?? monthlyLiquidity?.expectedAmount ?? 0;
+  // Calcular balance: líquido inicial esperado + ingresos reales - gastos (fijos + eventuales)
+  const totalLiquid = monthlyLiquidity?.expectedAmount ?? 0;
   const totalExpenses = totalFixedPayments + totalRegularExpenses;
-  const balance = totalLiquid + totalIncomes - totalExpenses;
 
   // Cargar datos de configuración si no están disponibles
   useEffect(() => {
@@ -136,113 +136,136 @@ const MyMonth = () => {
     setSelectedYear(year);
   };
 
-  const handleOpenLiquidityModal = () => {
-    setShowModal('liquidity');
-    setLiquidityFormData({
-      realAmount:
-        monthlyLiquidity?.realAmount?.toString() ||
-        monthlyLiquidity?.expectedAmount?.toString() ||
-        '',
-    });
-  };
-
-  const handleSubmitLiquidity = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.uid || !liquidityFormData.realAmount) return;
-
-    try {
-      await dispatch(
-        updateMonthlyLiquidity({
-          userId: user.uid,
-          monthPeriod: currentPeriod,
-          realAmount: parseFloat(liquidityFormData.realAmount),
-        })
-      ).unwrap();
-
-      setShowModal(null);
-      setLiquidityFormData({ realAmount: '' });
-    } catch (error) {
-      console.error('Error al actualizar liquidez:', error);
-    }
-  };
-
-  const handleUseExpectedAmount = () => {
-    if (monthlyLiquidity?.expectedAmount) {
-      setLiquidityFormData({
-        realAmount: monthlyLiquidity.expectedAmount.toString(),
-      });
-    }
-  };
-
-  const handleOpenFixedExpenseModal = () => {
+  const handleOpenFixedExpenseModal = (transaction?: Transaction | null) => {
+    if (transaction && !transaction.id) return;
     // Asegurar que los gastos fijos estén cargados
     if (user?.uid && fixedExpenses.length === 0) {
       dispatch(loadFixedExpenses(user.uid));
     }
+    setEditingTransaction(transaction || null);
     setShowModal('fixedExpense');
-    setFormData({
-      fixedExpenseId: '',
-      expectedAmount: '',
-      realAmount: '',
-      expectedIncomeId: '',
-      value: '',
-      concept: '',
-      paymentMethod: 'efectivo',
-      savingsSourceId: '',
-      newSavingsSourceName: '',
-    });
+    if (transaction) {
+      setFormData({
+        fixedExpenseId: transaction.fixedExpenseId || '',
+        expectedAmount: transaction.expectedAmount?.toString() || '',
+        realAmount: transaction.value?.toString() || '',
+        expectedIncomeId: '',
+        value: '',
+        concept: '',
+        paymentMethod: transaction.paymentMethod || 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
+      });
+    } else {
+      setFormData({
+        fixedExpenseId: '',
+        expectedAmount: '',
+        realAmount: '',
+        expectedIncomeId: '',
+        value: '',
+        concept: '',
+        paymentMethod: 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
+      });
+    }
   };
 
-  const handleOpenIncomeModal = () => {
+  const handleOpenIncomeModal = (transaction?: Transaction | null) => {
     // Asegurar que los ingresos esperados estén cargados
     if (user?.uid && expectedIncomes.length === 0) {
       dispatch(loadExpectedIncomes(user.uid));
     }
+    setEditingTransaction(transaction || null);
     setShowModal('income');
-    setFormData({
-      fixedExpenseId: '',
-      expectedAmount: '',
-      realAmount: '',
-      expectedIncomeId: '',
-      value: '',
-      concept: '',
-      paymentMethod: 'efectivo',
-      savingsSourceId: '',
-      newSavingsSourceName: '',
-    });
+    if (transaction) {
+      setFormData({
+        fixedExpenseId: '',
+        expectedAmount: transaction.expectedAmount?.toString() || '',
+        realAmount: transaction.value?.toString() || '',
+        expectedIncomeId: transaction.expectedIncomeId || '',
+        value: transaction.value?.toString() || '',
+        concept: transaction.concept || '',
+        paymentMethod: transaction.paymentMethod || 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
+      });
+    } else {
+      setFormData({
+        fixedExpenseId: '',
+        expectedAmount: '',
+        realAmount: '',
+        expectedIncomeId: '',
+        value: '',
+        concept: '',
+        paymentMethod: 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
+      });
+    }
   };
 
-  const handleOpenRegularExpenseModal = () => {
+  const handleOpenRegularExpenseModal = (transaction?: Transaction | null) => {
+    setEditingTransaction(transaction || null);
     setShowModal('regularExpense');
-    setFormData({
-      fixedExpenseId: '',
-      expectedAmount: '',
-      realAmount: '',
-      expectedIncomeId: '',
-      value: '',
-      concept: '',
-      paymentMethod: 'efectivo',
-      savingsSourceId: '',
-      newSavingsSourceName: '',
-    });
+    if (transaction) {
+      setFormData({
+        fixedExpenseId: '',
+        expectedAmount: '',
+        realAmount: '',
+        expectedIncomeId: '',
+        value: transaction.value?.toString() || '',
+        concept: transaction.concept || '',
+        paymentMethod: transaction.paymentMethod || 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
+      });
+    } else {
+      setFormData({
+        fixedExpenseId: '',
+        expectedAmount: '',
+        realAmount: '',
+        expectedIncomeId: '',
+        value: '',
+        concept: '',
+        paymentMethod: 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
+      });
+    }
   };
 
-  const handleOpenSavingsModal = () => {
+  const handleOpenSavingsModal = (transaction?: Transaction | null) => {
     if (user?.uid && savingsSources.length === 0) {
       dispatch(loadSavingsSources(user.uid));
     }
+    setEditingTransaction(transaction || null);
     setShowModal('savings');
-    setFormData({
-      fixedExpenseId: '',
-      expectedAmount: '',
-      realAmount: '',
-      expectedIncomeId: '',
-      value: '',
-      concept: '',
-      paymentMethod: 'efectivo',
-      savingsSourceId: '',
-      newSavingsSourceName: '',
-    });
+    if (transaction) {
+      setFormData({
+        fixedExpenseId: '',
+        expectedAmount: '',
+        realAmount: '',
+        expectedIncomeId: '',
+        value: transaction.value?.toString() || '',
+        concept: '',
+        paymentMethod: transaction.paymentMethod || 'efectivo',
+        savingsSourceId: transaction.savingsSourceId || '',
+        newSavingsSourceName: '',
+      });
+    } else {
+      setFormData({
+        fixedExpenseId: '',
+        expectedAmount: '',
+        realAmount: '',
+        expectedIncomeId: '',
+        value: '',
+        concept: '',
+        paymentMethod: 'efectivo',
+        savingsSourceId: '',
+        newSavingsSourceName: '',
+      });
+    }
   };
 
   const handleFixedExpenseChange = (fixedExpenseId: string) => {
@@ -273,12 +296,7 @@ const MyMonth = () => {
 
   const handleSubmitFixedExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('handleSubmitFixedExpense ejecutado');
     if (!user?.uid || !formData.fixedExpenseId) {
-      console.log('Validación fallida:', {
-        uid: user?.uid,
-        fixedExpenseId: formData.fixedExpenseId,
-      });
       return;
     }
 
@@ -286,29 +304,41 @@ const MyMonth = () => {
       (fe) => fe.id === formData.fixedExpenseId
     );
     if (!fixedExpense) {
-      console.log('Gasto fijo no encontrado');
       return;
     }
 
     try {
-      console.log('Dispatching createTransaction...');
-      await dispatch(
-        createTransaction({
-          userId: user.uid,
-          transaction: {
-            type: 'fixed_expense',
-            fixedExpenseId: formData.fixedExpenseId,
-            expectedAmount: parseFloat(formData.expectedAmount),
-            value: parseFloat(formData.realAmount),
-            concept: fixedExpense.name,
-            paymentMethod: formData.paymentMethod,
-            date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-            monthPeriod: currentPeriod,
-          },
-        })
-      ).unwrap();
+      if (editingTransaction && editingTransaction.id) {
+        // Actualizar transacción existente
+        await dispatch(
+          updateTransaction({
+            transactionId: editingTransaction.id,
+            transaction: {
+              value: parseFloat(formData.realAmount),
+              paymentMethod: formData.paymentMethod,
+            },
+          })
+        ).unwrap();
+      } else {
+        // Crear nueva transacción
+        await dispatch(
+          createTransaction({
+            userId: user.uid,
+            transaction: {
+              type: 'fixed_expense',
+              fixedExpenseId: formData.fixedExpenseId,
+              expectedAmount: parseFloat(formData.expectedAmount),
+              value: parseFloat(formData.realAmount),
+              concept: fixedExpense.name,
+              paymentMethod: formData.paymentMethod,
+              date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
+              monthPeriod: currentPeriod,
+            },
+          })
+        ).unwrap();
+      }
 
-      // Recargar transacciones después de crear
+      // Recargar transacciones
       await dispatch(
         loadTransactions({
           userId: user.uid,
@@ -317,6 +347,7 @@ const MyMonth = () => {
       ).unwrap();
 
       setShowModal(null);
+      setEditingTransaction(null);
       setFormData({
         fixedExpenseId: '',
         expectedAmount: '',
@@ -335,11 +366,7 @@ const MyMonth = () => {
 
   const handleSubmitIncome = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('handleSubmitIncome ejecutado');
-    if (!user?.uid) {
-      console.log('Usuario no disponible');
-      return;
-    }
+    if (!user?.uid) return;
 
     // Si hay expectedIncomeId, es un ingreso esperado
     if (formData.expectedIncomeId) {
@@ -349,23 +376,34 @@ const MyMonth = () => {
       if (!expectedIncome) return;
 
       try {
-        await dispatch(
-          createTransaction({
-            userId: user.uid,
-            transaction: {
-              type: 'expected_income',
-              expectedIncomeId: formData.expectedIncomeId,
-              expectedAmount: parseFloat(formData.expectedAmount),
-              value: parseFloat(formData.realAmount),
-              concept: expectedIncome.name,
-              paymentMethod: formData.paymentMethod,
-              date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-              monthPeriod: currentPeriod,
-            },
-          })
-        ).unwrap();
+        if (editingTransaction && editingTransaction.id) {
+          await dispatch(
+            updateTransaction({
+              transactionId: editingTransaction.id,
+              transaction: {
+                value: parseFloat(formData.realAmount),
+                paymentMethod: formData.paymentMethod,
+              },
+            })
+          ).unwrap();
+        } else {
+          await dispatch(
+            createTransaction({
+              userId: user.uid,
+              transaction: {
+                type: 'expected_income',
+                expectedIncomeId: formData.expectedIncomeId,
+                expectedAmount: parseFloat(formData.expectedAmount),
+                value: parseFloat(formData.realAmount),
+                concept: expectedIncome.name,
+                paymentMethod: formData.paymentMethod,
+                date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
+                monthPeriod: currentPeriod,
+              },
+            })
+          ).unwrap();
+        }
 
-        // Recargar transacciones después de crear
         await dispatch(
           loadTransactions({
             userId: user.uid,
@@ -374,6 +412,7 @@ const MyMonth = () => {
         ).unwrap();
 
         setShowModal(null);
+        setEditingTransaction(null);
         setFormData({
           fixedExpenseId: '',
           expectedAmount: '',
@@ -386,28 +425,40 @@ const MyMonth = () => {
           newSavingsSourceName: '',
         });
       } catch (error) {
-        console.error('Error al guardar ingreso esperado:', error);
+        console.error('Error al guardar ingreso:', error);
       }
     } else {
       // Es un ingreso inesperado
       if (!formData.concept) return;
 
       try {
-        await dispatch(
-          createTransaction({
-            userId: user.uid,
-            transaction: {
-              type: 'unexpected_income',
-              value: parseFloat(formData.value),
-              concept: formData.concept,
-              paymentMethod: formData.paymentMethod,
-              date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-              monthPeriod: currentPeriod,
-            },
-          })
-        ).unwrap();
+        if (editingTransaction && editingTransaction.id) {
+          await dispatch(
+            updateTransaction({
+              transactionId: editingTransaction.id,
+              transaction: {
+                value: parseFloat(formData.value),
+                concept: formData.concept,
+                paymentMethod: formData.paymentMethod,
+              },
+            })
+          ).unwrap();
+        } else {
+          await dispatch(
+            createTransaction({
+              userId: user.uid,
+              transaction: {
+                type: 'unexpected_income',
+                value: parseFloat(formData.value),
+                concept: formData.concept,
+                paymentMethod: formData.paymentMethod,
+                date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
+                monthPeriod: currentPeriod,
+              },
+            })
+          ).unwrap();
+        }
 
-        // Recargar transacciones después de crear
         await dispatch(
           loadTransactions({
             userId: user.uid,
@@ -416,6 +467,7 @@ const MyMonth = () => {
         ).unwrap();
 
         setShowModal(null);
+        setEditingTransaction(null);
         setFormData({
           fixedExpenseId: '',
           expectedAmount: '',
@@ -435,31 +487,36 @@ const MyMonth = () => {
 
   const handleSubmitRegularExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('handleSubmitRegularExpense ejecutado');
-    if (!user?.uid || !formData.concept) {
-      console.log('Validación fallida:', {
-        uid: user?.uid,
-        concept: formData.concept,
-      });
-      return;
-    }
+    if (!user?.uid || !formData.concept) return;
 
     try {
-      await dispatch(
-        createTransaction({
-          userId: user.uid,
-          transaction: {
-            type: 'regular_expense',
-            value: parseFloat(formData.value),
-            concept: formData.concept,
-            paymentMethod: formData.paymentMethod,
-            date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-            monthPeriod: currentPeriod,
-          },
-        })
-      ).unwrap();
+      if (editingTransaction?.id) {
+        await dispatch(
+          updateTransaction({
+            transactionId: editingTransaction.id,
+            transaction: {
+              value: parseFloat(formData.value),
+              concept: formData.concept,
+              paymentMethod: formData.paymentMethod,
+            },
+          })
+        ).unwrap();
+      } else {
+        await dispatch(
+          createTransaction({
+            userId: user.uid,
+            transaction: {
+              type: 'regular_expense',
+              value: parseFloat(formData.value),
+              concept: formData.concept,
+              paymentMethod: formData.paymentMethod,
+              date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
+              monthPeriod: currentPeriod,
+            },
+          })
+        ).unwrap();
+      }
 
-      // Recargar transacciones después de crear
       await dispatch(
         loadTransactions({
           userId: user.uid,
@@ -468,6 +525,7 @@ const MyMonth = () => {
       ).unwrap();
 
       setShowModal(null);
+      setEditingTransaction(null);
       setFormData({
         fixedExpenseId: '',
         expectedAmount: '',
@@ -498,17 +556,16 @@ const MyMonth = () => {
             userId: user.uid,
             source: {
               name: formData.newSavingsSourceName,
-              amount: 0, // Se actualizará con las transacciones
+              amount: 0,
             },
           })
         ).unwrap();
 
         if (!newSource.id) {
-          alert('Error al crear fuente de ahorro: no se obtuvo ID');
+          console.error('Error al crear fuente de ahorro: no se obtuvo ID');
           return;
         }
         savingsSourceId = newSource.id;
-        // Recargar savings sources
         await dispatch(loadSavingsSources(user.uid));
       } catch (error) {
         console.error('Error al crear fuente de ahorro:', error);
@@ -517,7 +574,7 @@ const MyMonth = () => {
     }
 
     if (!savingsSourceId) {
-      alert('Debe seleccionar o crear una fuente de ahorro');
+      console.error('Debe seleccionar o crear una fuente de ahorro');
       return;
     }
 
@@ -525,27 +582,39 @@ const MyMonth = () => {
       (ss) => ss.id === savingsSourceId
     );
     if (!savingsSource) {
-      alert('Fuente de ahorro no encontrada');
+      console.error('Fuente de ahorro no encontrada');
       return;
     }
 
     try {
-      await dispatch(
-        createTransaction({
-          userId: user.uid,
-          transaction: {
-            type: 'savings',
-            value: parseFloat(formData.value),
-            concept: savingsSource.name,
-            paymentMethod: formData.paymentMethod,
-            date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-            monthPeriod: currentPeriod,
-            savingsSourceId,
-          },
-        })
-      ).unwrap();
+      if (editingTransaction && editingTransaction.id) {
+        if (!editingTransaction.id) return;
+        await dispatch(
+          updateTransaction({
+            transactionId: editingTransaction.id,
+            transaction: {
+              value: parseFloat(formData.value),
+              paymentMethod: formData.paymentMethod,
+            },
+          })
+        ).unwrap();
+      } else {
+        await dispatch(
+          createTransaction({
+            userId: user.uid,
+            transaction: {
+              type: 'savings',
+              value: parseFloat(formData.value),
+              concept: savingsSource.name,
+              paymentMethod: formData.paymentMethod,
+              date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
+              monthPeriod: currentPeriod,
+              savingsSourceId,
+            },
+          })
+        ).unwrap();
+      }
 
-      // Recargar transacciones después de crear
       await dispatch(
         loadTransactions({
           userId: user.uid,
@@ -554,6 +623,7 @@ const MyMonth = () => {
       ).unwrap();
 
       setShowModal(null);
+      setEditingTransaction(null);
       setFormData({
         fixedExpenseId: '',
         expectedAmount: '',
@@ -567,6 +637,46 @@ const MyMonth = () => {
       });
     } catch (error) {
       console.error('Error al guardar ahorro:', error);
+    }
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    if (!user?.uid) return;
+    const confirmed = await confirm.showConfirm({
+      title: 'Eliminar Transacción',
+      message: '¿Está seguro de eliminar esta transacción?',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      await dispatch(deleteTransaction(transactionId)).unwrap();
+      await dispatch(
+        loadTransactions({
+          userId: user.uid,
+          monthPeriod: currentPeriod,
+        })
+      ).unwrap();
+    } catch (error) {
+      console.error('Error al eliminar transacción:', error);
+    }
+  };
+
+  const handleEditTransaction = (transaction: any) => {
+    if (!transaction?.id) return;
+    if (transaction.type === 'fixed_expense') {
+      handleOpenFixedExpenseModal(transaction);
+    } else if (
+      transaction.type === 'expected_income' ||
+      transaction.type === 'unexpected_income'
+    ) {
+      handleOpenIncomeModal(transaction);
+    } else if (transaction.type === 'regular_expense') {
+      handleOpenRegularExpenseModal(transaction);
+    } else if (transaction.type === 'savings') {
+      handleOpenSavingsModal(transaction);
     }
   };
 
@@ -719,20 +829,13 @@ const MyMonth = () => {
                   currency
                 )}
               </div>
-              <div className='text-zinc-600'>
-                <span className='font-medium'>Líquido Inicial Real:</span>{' '}
-                {monthlyLiquidity?.realAmount !== null &&
-                monthlyLiquidity?.realAmount !== undefined
-                  ? formatCurrency(monthlyLiquidity.realAmount, currency)
-                  : 'No establecido'}
-              </div>
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className='flex flex-wrap gap-3 mb-6'>
             <Button
-              onClick={handleOpenFixedExpenseModal}
+              onClick={() => handleOpenFixedExpenseModal()}
               variant='secondary'
               size='md'
               icon={
@@ -754,7 +857,7 @@ const MyMonth = () => {
               Agregar Pago Fijo
             </Button>
             <Button
-              onClick={handleOpenIncomeModal}
+              onClick={() => handleOpenIncomeModal()}
               variant='secondary'
               size='md'
               icon={
@@ -776,7 +879,7 @@ const MyMonth = () => {
               Agregar Ingreso
             </Button>
             <Button
-              onClick={handleOpenRegularExpenseModal}
+              onClick={() => handleOpenRegularExpenseModal()}
               variant='secondary'
               size='md'
               icon={
@@ -797,30 +900,6 @@ const MyMonth = () => {
             >
               Agregar Gasto
             </Button>
-            <Button
-              onClick={handleOpenLiquidityModal}
-              variant='secondary'
-              size='md'
-              icon={
-                <svg
-                  className='w-5 h-5'
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-                  />
-                </svg>
-              }
-            >
-              {monthlyLiquidity?.realAmount !== null
-                ? 'Editar Liquidez'
-                : 'Establecer Liquidez'}
-            </Button>
           </div>
 
           {/* Transactions Table */}
@@ -830,7 +909,7 @@ const MyMonth = () => {
                 Transacciones del Mes
               </h3>
               <Button
-                onClick={handleOpenSavingsModal}
+                onClick={() => handleOpenSavingsModal()}
                 variant='secondary'
                 size='md'
                 icon={
@@ -879,13 +958,16 @@ const MyMonth = () => {
                       <th className='text-right py-3 px-4 font-semibold text-primary-medium'>
                         Valor Real
                       </th>
+                      <th className='text-center py-3 px-4 font-semibold text-primary-medium w-24'>
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {allTransactions.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={6}
+                          colSpan={7}
                           className='py-12 text-center text-zinc-600'
                         >
                           No hay transacciones registradas en{' '}
@@ -893,56 +975,114 @@ const MyMonth = () => {
                         </td>
                       </tr>
                     ) : (
-                      allTransactions.map((transaction) => (
-                        <tr
-                          key={transaction.id}
-                          className='border-b border-zinc-200 hover:bg-neutral-light transition-colors'
-                        >
-                          <td className='py-3 px-4 text-zinc-600'>
-                            {formatDate(transaction.date)}
-                          </td>
-                          <td className='py-3 px-4 text-zinc-800'>
-                            {transaction.concept}
-                          </td>
-                          <td className='py-3 px-4 text-zinc-600'>
-                            {transaction.type === 'fixed_expense'
-                              ? 'Gasto Fijo'
-                              : transaction.type === 'expected_income'
-                              ? 'Ingreso Esperado'
-                              : transaction.type === 'unexpected_income'
-                              ? 'Ingreso Inesperado'
-                              : transaction.type === 'savings'
-                              ? 'Ahorro'
-                              : 'Gasto'}
-                          </td>
-                          <td className='py-3 px-4 text-zinc-600'>
-                            {transaction.paymentMethod}
-                          </td>
-                          <td className='py-3 px-4 text-right text-zinc-500'>
-                            {transaction.expectedAmount !== null &&
-                            transaction.expectedAmount !== undefined
-                              ? formatCurrency(
-                                  transaction.expectedAmount,
-                                  currency
-                                )
-                              : '-'}
-                          </td>
-                          <td
-                            className={`py-3 px-4 text-right font-semibold ${
-                              transaction.type === 'expected_income' ||
-                              transaction.type === 'unexpected_income'
-                                ? 'text-green-600'
-                                : 'text-red-600'
-                            }`}
+                      allTransactions.map((transaction) => {
+                        // Solo mostrar acciones para transacciones reales (no pendientes)
+                        const isPending =
+                          transaction.id?.startsWith('pending-');
+                        return (
+                          <tr
+                            key={transaction.id}
+                            className='border-b border-zinc-200 hover:bg-neutral-light transition-colors'
                           >
-                            {transaction.type === 'expected_income' ||
-                            transaction.type === 'unexpected_income'
-                              ? '+'
-                              : '-'}
-                            {formatCurrency(transaction.value, currency)}
-                          </td>
-                        </tr>
-                      ))
+                            <td className='py-3 px-4 text-zinc-600'>
+                              {formatDate(transaction.date)}
+                            </td>
+                            <td className='py-3 px-4 text-zinc-800'>
+                              {transaction.concept}
+                            </td>
+                            <td className='py-3 px-4 text-zinc-600'>
+                              {transaction.type === 'fixed_expense'
+                                ? 'Gasto Fijo'
+                                : transaction.type === 'expected_income'
+                                ? 'Ingreso Esperado'
+                                : transaction.type === 'unexpected_income'
+                                ? 'Ingreso Inesperado'
+                                : transaction.type === 'savings'
+                                ? 'Ahorro'
+                                : 'Gasto'}
+                            </td>
+                            <td className='py-3 px-4 text-zinc-600'>
+                              {transaction.paymentMethod}
+                            </td>
+                            <td className='py-3 px-4 text-right text-zinc-500'>
+                              {transaction.expectedAmount !== null &&
+                              transaction.expectedAmount !== undefined
+                                ? formatCurrency(
+                                    transaction.expectedAmount,
+                                    currency
+                                  )
+                                : '-'}
+                            </td>
+                            <td
+                              className={`py-3 px-4 text-right font-semibold ${
+                                transaction.type === 'expected_income' ||
+                                transaction.type === 'unexpected_income'
+                                  ? 'text-green-600'
+                                  : 'text-red-600'
+                              }`}
+                            >
+                              {transaction.type === 'expected_income' ||
+                              transaction.type === 'unexpected_income'
+                                ? '+'
+                                : '-'}
+                              {formatCurrency(transaction.value, currency)}
+                            </td>
+                            <td className='py-3 px-4'>
+                              {!isPending && transaction.id && (
+                                <div className='flex justify-center gap-1 sm:gap-2'>
+                                  <Button
+                                    onClick={() =>
+                                      handleEditTransaction(transaction)
+                                    }
+                                    variant='ghost'
+                                    size='sm'
+                                    icon={
+                                      <svg
+                                        className='w-4 h-4'
+                                        fill='none'
+                                        stroke='currentColor'
+                                        viewBox='0 0 24 24'
+                                      >
+                                        <path
+                                          strokeLinecap='round'
+                                          strokeLinejoin='round'
+                                          strokeWidth={2}
+                                          d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                                        />
+                                      </svg>
+                                    }
+                                    iconOnly
+                                  />
+                                  <Button
+                                    onClick={() =>
+                                      transaction.id &&
+                                      handleDeleteTransaction(transaction.id)
+                                    }
+                                    variant='ghost'
+                                    size='sm'
+                                    icon={
+                                      <svg
+                                        className='w-4 h-4'
+                                        fill='none'
+                                        stroke='currentColor'
+                                        viewBox='0 0 24 24'
+                                      >
+                                        <path
+                                          strokeLinecap='round'
+                                          strokeLinejoin='round'
+                                          strokeWidth={2}
+                                          d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+                                        />
+                                      </svg>
+                                    }
+                                    iconOnly
+                                  />
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -957,7 +1097,7 @@ const MyMonth = () => {
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
           <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
             <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
-              Agregar Pago Fijo
+              {editingTransaction ? 'Editar Pago Fijo' : 'Agregar Pago Fijo'}
             </h3>
             <form onSubmit={handleSubmitFixedExpense}>
               <div className='mb-4'>
@@ -968,7 +1108,8 @@ const MyMonth = () => {
                   required
                   value={formData.fixedExpenseId}
                   onChange={(e) => handleFixedExpenseChange(e.target.value)}
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
+                  disabled={!!editingTransaction}
+                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white disabled:bg-zinc-100 disabled:text-zinc-600'
                   aria-label='Gasto Fijo'
                 >
                   <option value=''>Seleccione un gasto fijo</option>
@@ -1226,90 +1367,6 @@ const MyMonth = () => {
                       ? !formData.realAmount
                       : !formData.value || !formData.concept
                   }
-                >
-                  Guardar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para Estado de Liquidez */}
-      {showModal === 'liquidity' && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
-            <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
-              Estado Inicial de Liquidez
-            </h3>
-            <form onSubmit={handleSubmitLiquidity}>
-              <div className='mb-4'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Valor Esperado (del mes anterior)
-                </label>
-                <input
-                  type='number'
-                  step='0.01'
-                  value={monthlyLiquidity?.expectedAmount ?? 0}
-                  readOnly
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg bg-zinc-100 text-zinc-600'
-                />
-                <p className='text-xs text-zinc-500 mt-1'>
-                  Este es el balance final del mes anterior
-                </p>
-              </div>
-
-              <div className='mb-4'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Valor Real *
-                </label>
-                <input
-                  type='number'
-                  step='0.01'
-                  required
-                  value={liquidityFormData.realAmount}
-                  onChange={(e) =>
-                    setLiquidityFormData({
-                      ...liquidityFormData,
-                      realAmount: e.target.value,
-                    })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder='0.00'
-                />
-                <p className='text-xs text-zinc-500 mt-1'>
-                  Establece el valor real de tu liquidez inicial
-                </p>
-              </div>
-
-              <div className='mb-6'>
-                <Button
-                  type='button'
-                  onClick={handleUseExpectedAmount}
-                  variant='outline'
-                  size='sm'
-                  className='w-full'
-                >
-                  Usar Valor Esperado
-                </Button>
-              </div>
-
-              <div className='flex gap-3'>
-                <Button
-                  type='button'
-                  onClick={() => setShowModal(null)}
-                  variant='outline'
-                  size='md'
-                  className='flex-1'
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type='submit'
-                  variant='secondary'
-                  size='md'
-                  className='flex-1'
-                  disabled={!liquidityFormData.realAmount}
                 >
                   Guardar
                 </Button>

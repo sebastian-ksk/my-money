@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import UserConfigSection from '../Widgets/user-config-section/user-config-section';
-import LiquidBalanceSection from '../Widgets/liquid-balance-section/liquid-balance-section';
+// import LiquidBalanceSection from '../Widgets/liquid-balance-section/liquid-balance-section';
 import SavingsBalanceSection from '../Widgets/savings-balance-section/savings-balance-section';
 import FixedExpensesSection from '../Widgets/fixed-expenses-section/fixed-expenses-section';
 import ExpectedIncomesSection from '../Widgets/expected-incomes-section/expected-incomes-section';
@@ -50,7 +50,7 @@ const ConfigMyMoney = () => {
         </div>
 
         {/* Sección: Balance Líquido */}
-        <div className='bg-white rounded-lg shadow-md sm:shadow-lg overflow-hidden'>
+        {/* <div className='bg-white rounded-lg shadow-md sm:shadow-lg overflow-hidden'>
           <button
             onClick={() => toggleSection('liquid-balance')}
             className='w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-neutral-light transition-colors'
@@ -79,7 +79,7 @@ const ConfigMyMoney = () => {
               <LiquidBalanceSection />
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Sección: Balance en Ahorro */}
         <div className='bg-white rounded-lg shadow-md sm:shadow-lg overflow-hidden'>

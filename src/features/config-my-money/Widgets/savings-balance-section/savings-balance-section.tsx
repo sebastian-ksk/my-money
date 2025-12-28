@@ -11,14 +11,15 @@ import {
   selectConfigLoading,
   selectUserConfig,
 } from '@/Redux/features/config-my-money';
-import { Button } from '@/components/ui';
-import { formatCurrency, parseCurrencyInput } from '@/utils/currency';
+import { Button, useConfirm } from '@/components/ui';
+import { formatCurrency } from '@/utils/currency';
 
 export default function SavingsBalanceSection() {
   const dispatch = useAppDispatch();
   const savingsSources = useAppSelector(selectSavingsSources);
   const loading = useAppSelector(selectConfigLoading);
   const userConfig = useAppSelector(selectUserConfig);
+  const confirm = useConfirm();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -47,7 +48,7 @@ export default function SavingsBalanceSection() {
     if (!userData) return;
 
     const user = JSON.parse(userData);
-    const numericAmount = parseFloat(parseCurrencyInput(formData.amount));
+    const numericAmount = parseFloat(formData.amount.replace(/[^\d]/g, '')) || 0;
 
     if (editingId) {
       await dispatch(
@@ -88,16 +89,23 @@ export default function SavingsBalanceSection() {
       setEditingId(source.id);
       setFormData({
         name: source.name,
-        amount: formatCurrency(source.amount, currency),
+        amount: source.amount.toString(),
       });
       setShowModal(true);
     }
   };
 
   const handleDelete = async (sourceId: string) => {
-    if (confirm('¿Está seguro de eliminar esta fuente de ahorro?')) {
-      await dispatch(deleteSavingsSource(sourceId));
-    }
+    const confirmed = await confirm.showConfirm({
+      title: 'Eliminar Fuente de Ahorro',
+      message: '¿Está seguro de eliminar esta fuente de ahorro?',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    await dispatch(deleteSavingsSource(sourceId));
   };
 
   const handleCancel = () => {
@@ -279,27 +287,27 @@ export default function SavingsBalanceSection() {
                   required
                   value={formData.amount}
                   onChange={(e) => {
-                    const rawValue = parseCurrencyInput(e.target.value);
-                    if (rawValue !== '' || e.target.value === '') {
-                      const num = rawValue ? parseFloat(rawValue) : 0;
-                      setFormData({
-                        ...formData,
-                        amount: num > 0 ? formatCurrency(num, currency) : '',
-                      });
-                    }
+                    // Permitir solo números
+                    const rawValue = e.target.value.replace(/[^\d]/g, '');
+                    setFormData({
+                      ...formData,
+                      amount: rawValue,
+                    });
                   }}
                   onBlur={(e) => {
-                    const rawValue = parseCurrencyInput(e.target.value);
+                    const rawValue = e.target.value.replace(/[^\d]/g, '');
                     if (rawValue) {
                       const num = parseFloat(rawValue);
-                      setFormData({
-                        ...formData,
-                        amount: formatCurrency(num, currency),
-                      });
+                      if (!isNaN(num) && num > 0) {
+                        setFormData({
+                          ...formData,
+                          amount: formatCurrency(num, currency),
+                        });
+                      }
                     }
                   }}
                   className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder={formatCurrency(0, currency)}
+                  placeholder='Ej: 110000'
                 />
               </div>
 

@@ -13,8 +13,8 @@ import {
   selectConfigLoading,
   selectUserConfig,
 } from '@/Redux/features/config-my-money';
-import { Button } from '@/components/ui';
-import { formatCurrency, parseCurrencyInput } from '@/utils/currency';
+import { Button, useConfirm } from '@/components/ui';
+import { formatCurrency } from '@/utils/currency';
 
 export default function FixedExpensesSection() {
   const dispatch = useAppDispatch();
@@ -22,6 +22,7 @@ export default function FixedExpensesSection() {
   const categories = useAppSelector(selectExpenseCategories);
   const loading = useAppSelector(selectConfigLoading);
   const userConfig = useAppSelector(selectUserConfig);
+  const confirm = useConfirm();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -81,60 +82,88 @@ export default function FixedExpensesSection() {
       );
       if (createExpenseCategory.fulfilled.match(categoryResult)) {
         categoryId = categoryResult.payload.id || '';
+      } else {
+        console.error('Error al crear la categoría', categoryResult);
+        return;
       }
     }
 
     if (!categoryId) {
-      alert('Debe seleccionar o crear una categoría');
+      console.error('Debe seleccionar o crear una categoría');
       return;
     }
 
-    const numericAmount = parseFloat(parseCurrencyInput(formData.amount));
-    const months = formData.appliesToAllMonths
-      ? undefined
-      : formData.selectedMonths.length > 0
-      ? formData.selectedMonths
-      : undefined;
-
-    if (editingId) {
-      await dispatch(
-        updateFixedExpense({
-          expenseId: editingId,
-          expense: {
-            name: formData.name,
-            amount: numericAmount,
-            dayOfMonth: parseInt(formData.dayOfMonth),
-            categoryId,
-            months,
-          },
-        })
-      );
-    } else {
-      await dispatch(
-        createFixedExpense({
-          userId: user.uid,
-          expense: {
-            name: formData.name,
-            amount: numericAmount,
-            dayOfMonth: parseInt(formData.dayOfMonth),
-            categoryId,
-            months,
-          },
-        })
-      );
+    const numericAmount = parseFloat(formData.amount.replace(/[^\d]/g, '')) || 0;
+    if (numericAmount <= 0) {
+      console.error('El monto debe ser mayor a 0');
+      return;
     }
 
-    setFormData({
-      name: '',
-      amount: '',
-      dayOfMonth: '',
-      categoryId: '',
-      categoryName: '',
-      appliesToAllMonths: true,
-      selectedMonths: [],
-    });
-    setEditingId(null);
-    setShowModal(false);
+    const dayOfMonth = parseInt(formData.dayOfMonth);
+    if (isNaN(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
+      console.error('El día del mes debe ser un número entre 1 y 31');
+      return;
+    }
+
+    // Si aplica a todos los meses: null (no se incluirá el campo)
+    // Si hay meses seleccionados: array con los meses
+    // Si no hay meses seleccionados: array vacío []
+    const months = formData.appliesToAllMonths
+      ? null
+      : formData.selectedMonths;
+
+    try {
+      let result;
+      if (editingId) {
+        result = await dispatch(
+          updateFixedExpense({
+            expenseId: editingId,
+            expense: {
+              name: formData.name,
+              amount: numericAmount,
+              dayOfMonth,
+              categoryId,
+              months,
+            },
+          })
+        );
+      } else {
+        result = await dispatch(
+          createFixedExpense({
+            userId: user.uid,
+            expense: {
+              name: formData.name,
+              amount: numericAmount,
+              dayOfMonth,
+              categoryId,
+              months,
+            },
+          })
+        );
+      }
+
+      // Verificar si la acción fue exitosa
+      if (createFixedExpense.fulfilled.match(result) || updateFixedExpense.fulfilled.match(result)) {
+        // Recargar todos los gastos fijos
+        await dispatch(loadFixedExpenses(user.uid));
+
+        setFormData({
+          name: '',
+          amount: '',
+          dayOfMonth: '',
+          categoryId: '',
+          categoryName: '',
+          appliesToAllMonths: true,
+          selectedMonths: [],
+        });
+        setEditingId(null);
+        setShowModal(false);
+      } else {
+        console.error('Error al guardar el gasto fijo', result);
+      }
+    } catch (error: any) {
+      console.error('Error al guardar gasto fijo:', error);
+    }
   };
 
   const handleEdit = (expense: {
@@ -149,7 +178,7 @@ export default function FixedExpensesSection() {
       setEditingId(expense.id);
       setFormData({
         name: expense.name,
-        amount: formatCurrency(expense.amount, currency),
+        amount: expense.amount.toString(),
         dayOfMonth: expense.dayOfMonth.toString(),
         categoryId: expense.categoryId,
         categoryName: '',
@@ -161,8 +190,20 @@ export default function FixedExpensesSection() {
   };
 
   const handleDelete = async (expenseId: string) => {
-    if (confirm('¿Está seguro de eliminar este gasto fijo?')) {
-      await dispatch(deleteFixedExpense(expenseId));
+    const confirmed = await confirm.showConfirm({
+      title: 'Eliminar Gasto Fijo',
+      message: '¿Está seguro de eliminar este gasto fijo?',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    await dispatch(deleteFixedExpense(expenseId));
+    const userData = sessionStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      await dispatch(loadFixedExpenses(user.uid));
     }
   };
 
@@ -404,27 +445,27 @@ export default function FixedExpensesSection() {
                   required
                   value={formData.amount}
                   onChange={(e) => {
-                    const rawValue = parseCurrencyInput(e.target.value);
-                    if (rawValue !== '' || e.target.value === '') {
-                      const num = rawValue ? parseFloat(rawValue) : 0;
-                      setFormData({
-                        ...formData,
-                        amount: num > 0 ? formatCurrency(num, currency) : '',
-                      });
-                    }
+                    // Permitir solo números
+                    const rawValue = e.target.value.replace(/[^\d]/g, '');
+                    setFormData({
+                      ...formData,
+                      amount: rawValue,
+                    });
                   }}
                   onBlur={(e) => {
-                    const rawValue = parseCurrencyInput(e.target.value);
+                    const rawValue = e.target.value.replace(/[^\d]/g, '');
                     if (rawValue) {
                       const num = parseFloat(rawValue);
-                      setFormData({
-                        ...formData,
-                        amount: formatCurrency(num, currency),
-                      });
+                      if (!isNaN(num) && num > 0) {
+                        setFormData({
+                          ...formData,
+                          amount: formatCurrency(num, currency),
+                        });
+                      }
                     }
                   }}
                   className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder={formatCurrency(0, currency)}
+                  placeholder='Ej: 110000'
                 />
               </div>
 

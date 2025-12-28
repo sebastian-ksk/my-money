@@ -194,12 +194,22 @@ export const configMyMoneyService = {
     const expensesRef = firestore.collection('fixed_expenses');
     const now = firebase.firestore.Timestamp.now();
 
-    const expenseData: FixedExpense = {
+    // Filtrar campos undefined/null antes de enviar a Firebase
+    const expenseData: any = {
       userId,
-      ...expense,
+      name: expense.name,
+      amount: expense.amount,
+      dayOfMonth: expense.dayOfMonth,
+      categoryId: expense.categoryId,
       createdAt: now,
       updatedAt: now,
     };
+
+    // Si months es null o undefined, no incluir el campo (aplica a todos)
+    // Si months es un array (vacío o con valores), incluirlo
+    if (expense.months !== null && expense.months !== undefined) {
+      expenseData.months = expense.months;
+    }
 
     const docRef = await expensesRef.add(expenseData);
     const doc = await docRef.get();
@@ -215,10 +225,21 @@ export const configMyMoneyService = {
     const expenseRef = firestore.collection('fixed_expenses').doc(expenseId);
     const now = firebase.firestore.Timestamp.now();
 
-    await expenseRef.update({
-      ...expense,
+    // Filtrar campos undefined antes de enviar a Firebase
+    const updateData: any = {
       updatedAt: now,
-    });
+    };
+
+    if (expense.name !== undefined) updateData.name = expense.name;
+    if (expense.amount !== undefined) updateData.amount = expense.amount;
+    if (expense.dayOfMonth !== undefined) updateData.dayOfMonth = expense.dayOfMonth;
+    if (expense.categoryId !== undefined) updateData.categoryId = expense.categoryId;
+    // Si months es null, no incluir (aplica a todos). Si es array (vacío o con valores), incluirlo
+    if (expense.months !== null && expense.months !== undefined) {
+      updateData.months = expense.months;
+    }
+
+    await expenseRef.update(updateData);
 
     const doc = await expenseRef.get();
     return { id: doc.id, ...doc.data() } as FixedExpense;
@@ -246,12 +267,21 @@ export const configMyMoneyService = {
     const incomesRef = firestore.collection('expected_incomes');
     const now = firebase.firestore.Timestamp.now();
 
-    const incomeData: ExpectedIncome = {
+    // Filtrar campos undefined/null antes de enviar a Firebase
+    const incomeData: any = {
       userId,
-      ...income,
+      name: income.name,
+      amount: income.amount,
+      dayOfMonth: income.dayOfMonth,
       createdAt: now,
       updatedAt: now,
     };
+
+    // Si months es null o undefined, no incluir el campo (aplica a todos)
+    // Si months es un array (vacío o con valores), incluirlo
+    if (income.months !== null && income.months !== undefined) {
+      incomeData.months = income.months;
+    }
 
     const docRef = await incomesRef.add(incomeData);
     const doc = await docRef.get();
@@ -267,10 +297,20 @@ export const configMyMoneyService = {
     const incomeRef = firestore.collection('expected_incomes').doc(incomeId);
     const now = firebase.firestore.Timestamp.now();
 
-    await incomeRef.update({
-      ...income,
+    // Filtrar campos undefined antes de enviar a Firebase
+    const updateData: any = {
       updatedAt: now,
-    });
+    };
+
+    if (income.name !== undefined) updateData.name = income.name;
+    if (income.amount !== undefined) updateData.amount = income.amount;
+    if (income.dayOfMonth !== undefined) updateData.dayOfMonth = income.dayOfMonth;
+    // Si months es null, no incluir (aplica a todos). Si es array (vacío o con valores), incluirlo
+    if (income.months !== null && income.months !== undefined) {
+      updateData.months = income.months;
+    }
+
+    await incomeRef.update(updateData);
 
     const doc = await incomeRef.get();
     return { id: doc.id, ...doc.data() } as ExpectedIncome;

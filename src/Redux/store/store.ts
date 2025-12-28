@@ -59,11 +59,45 @@ export const store = configureStore({
         ignoredPaths: [
           'myMonth.transactions',
           'myMonth.monthlyLiquidity',
+          'configMyMoney.userConfig',
           'configMyMoney.savingsSources',
           'configMyMoney.balanceSources',
           'configMyMoney.fixedExpenses',
           'configMyMoney.expectedIncomes',
+          'configMyMoney.expenseCategories',
         ],
+        isSerializable: (value: any, path?: string) => {
+          // Ignorar paths que contengan createdAt o updatedAt (son Timestamps de Firebase)
+          if (path && (path.includes('createdAt') || path.includes('updatedAt'))) {
+            return true;
+          }
+          // Permitir Timestamps de Firebase
+          if (value && typeof value === 'object' && value.constructor) {
+            if (value.constructor.name === 'Timestamp') {
+              return true;
+            }
+            // Verificar si es un Timestamp de Firebase por sus propiedades
+            if (
+              value.seconds !== undefined &&
+              value.nanoseconds !== undefined &&
+              typeof value.toDate === 'function'
+            ) {
+              return true;
+            }
+          }
+          // Verificación básica para otros valores primitivos
+          if (
+            typeof value === 'string' ||
+            typeof value === 'number' ||
+            typeof value === 'boolean' ||
+            value === null ||
+            value === undefined
+          ) {
+            return true;
+          }
+          // Para objetos y arrays, permitirlos (la verificación profunda se hace recursivamente)
+          return true;
+        },
       },
     }).concat(autoMigrationMiddleware),
   devTools: process.env.NODE_ENV !== 'production',

@@ -11,14 +11,15 @@ import {
   selectConfigLoading,
   selectUserConfig,
 } from '@/Redux/features/config-my-money';
-import { Button } from '@/components/ui';
-import { formatCurrency, parseCurrencyInput } from '@/utils/currency';
+import { Button, useConfirm } from '@/components/ui';
+import { formatCurrency } from '@/utils/currency';
 
 export default function ExpectedIncomesSection() {
   const dispatch = useAppDispatch();
   const expectedIncomes = useAppSelector(selectExpectedIncomes);
   const loading = useAppSelector(selectConfigLoading);
   const userConfig = useAppSelector(selectUserConfig);
+  const confirm = useConfirm();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -60,12 +61,13 @@ export default function ExpectedIncomesSection() {
     if (!userData) return;
 
     const user = JSON.parse(userData);
-    const numericAmount = parseFloat(parseCurrencyInput(formData.amount));
+    const numericAmount = parseFloat(formData.amount.replace(/[^\d]/g, '')) || 0;
+    // Si aplica a todos los meses: null (no se incluirá el campo)
+    // Si hay meses seleccionados: array con los meses
+    // Si no hay meses seleccionados: array vacío []
     const months = formData.appliesToAllMonths
-      ? undefined
-      : formData.selectedMonths.length > 0
-      ? formData.selectedMonths
-      : undefined;
+      ? null
+      : formData.selectedMonths;
 
     if (editingId) {
       await dispatch(
@@ -115,7 +117,7 @@ export default function ExpectedIncomesSection() {
       setEditingId(income.id);
       setFormData({
         name: income.name,
-        amount: formatCurrency(income.amount, currency),
+        amount: income.amount.toString(),
         dayOfMonth: income.dayOfMonth.toString(),
         appliesToAllMonths: !income.months || income.months.length === 0,
         selectedMonths: income.months || [],
@@ -125,9 +127,16 @@ export default function ExpectedIncomesSection() {
   };
 
   const handleDelete = async (incomeId: string) => {
-    if (confirm('¿Está seguro de eliminar este ingreso esperado?')) {
-      await dispatch(deleteExpectedIncome(incomeId));
-    }
+    const confirmed = await confirm.showConfirm({
+      title: 'Eliminar Ingreso Esperado',
+      message: '¿Está seguro de eliminar este ingreso esperado?',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    await dispatch(deleteExpectedIncome(incomeId));
   };
 
   const handleCancel = () => {
@@ -353,27 +362,27 @@ export default function ExpectedIncomesSection() {
                   required
                   value={formData.amount}
                   onChange={(e) => {
-                    const rawValue = parseCurrencyInput(e.target.value);
-                    if (rawValue !== '' || e.target.value === '') {
-                      const num = rawValue ? parseFloat(rawValue) : 0;
-                      setFormData({
-                        ...formData,
-                        amount: num > 0 ? formatCurrency(num, currency) : '',
-                      });
-                    }
+                    // Permitir solo números
+                    const rawValue = e.target.value.replace(/[^\d]/g, '');
+                    setFormData({
+                      ...formData,
+                      amount: rawValue,
+                    });
                   }}
                   onBlur={(e) => {
-                    const rawValue = parseCurrencyInput(e.target.value);
+                    const rawValue = e.target.value.replace(/[^\d]/g, '');
                     if (rawValue) {
                       const num = parseFloat(rawValue);
-                      setFormData({
-                        ...formData,
-                        amount: formatCurrency(num, currency),
-                      });
+                      if (!isNaN(num) && num > 0) {
+                        setFormData({
+                          ...formData,
+                          amount: formatCurrency(num, currency),
+                        });
+                      }
                     }
                   }}
                   className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder={formatCurrency(0, currency)}
+                  placeholder='Ej: 110000'
                 />
               </div>
 
