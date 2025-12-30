@@ -49,7 +49,10 @@ services:
       - "traefik.http.services.mymoney.loadbalancer.server.port=3000"
     networks:
       - traefik_network
+      - default
 
 networks:
   traefik_network:
     external: true
+  default:
+    driver: bridge
