@@ -770,7 +770,6 @@ const MyMonth = () => {
           monthPeriod={currentPeriod}
           monthlyLiquidity={monthlyLiquidity}
           currency={currency}
-          dayOfMonth={userConfig?.monthResetDay || 1}
           onClose={() => setShowLiquidityModal(false)}
           onSave={async () => {
             await dispatch(

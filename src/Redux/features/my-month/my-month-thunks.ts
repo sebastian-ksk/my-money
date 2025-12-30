@@ -3,7 +3,11 @@ import {
   myMonthService,
   getPreviousMonthPeriod,
 } from '@/services/Firebase/my-month-service';
-import type { Transaction, LiquiditySource } from './my-month-models';
+import type {
+  Transaction,
+  LiquiditySource,
+  MonthlyLiquidityState,
+} from './my-month-models';
 
 // ========== Transactions ==========
 export const loadTransactions = createAsyncThunk(
@@ -124,10 +128,24 @@ export const loadMonthlyLiquidity = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      let liquidity = await myMonthService.getMonthlyLiquidity(
-        userId,
-        monthPeriod
-      );
+      // Primero buscar por fecha actual si tenemos dayOfMonth
+      let liquidity: MonthlyLiquidityState | null = null;
+      if (dayOfMonth) {
+        const today = new Date();
+        liquidity = await myMonthService.getMonthlyLiquidityByDate(
+          userId,
+          today,
+          dayOfMonth
+        );
+      }
+
+      // Si no se encuentra por fecha, buscar por monthPeriod
+      if (!liquidity) {
+        liquidity = await myMonthService.getMonthlyLiquidity(
+          userId,
+          monthPeriod
+        );
+      }
 
       // Si no existe, crear uno con el expectedAmount del mes anterior
       if (!liquidity) {
@@ -189,10 +207,12 @@ export const loadMonthlyLiquidity = createAsyncThunk(
           // (significa que aún no ha sido modificado por el usuario)
           if (liquidity.expectedAmount === previousBalance) {
             // Actualizar las fuentes con el nuevo valor del mes anterior
-            const updatedSources = liquidity.liquiditySources.map((s) => ({
-              ...s,
-              expectedAmount: previousBalance,
-            }));
+            const updatedSources = liquidity.liquiditySources.map(
+              (s: LiquiditySource) => ({
+                ...s,
+                expectedAmount: previousBalance,
+              })
+            );
 
             liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
               userId,

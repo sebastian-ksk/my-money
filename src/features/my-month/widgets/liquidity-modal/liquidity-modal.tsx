@@ -16,17 +16,13 @@ import type {
 import { Button, useConfirm } from '@/components/ui';
 import ModalWithContent from '@/components/modal-with-content';
 import { formatCurrency } from '@/utils/currency';
-import {
-  myMonthService,
-  getPreviousMonthPeriod,
-} from '@/services/Firebase/my-month-service';
+import { myMonthService } from '@/services/Firebase/my-month-service';
 
 interface LiquidityModalProps {
   userId: string;
   monthPeriod: string;
   monthlyLiquidity: MonthlyLiquidityState | null;
   currency: string;
-  dayOfMonth: number;
   onClose: () => void;
   onSave: () => void;
 }
@@ -36,7 +32,6 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
   monthPeriod,
   monthlyLiquidity,
   currency,
-  dayOfMonth,
   onClose,
   onSave,
 }) => {
@@ -96,58 +91,6 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingSourceId, sources]);
-
-  // Verificar y crear monthly liquidity si no existe para el periodo actual
-  useEffect(() => {
-    const ensureMonthlyLiquidityExists = async () => {
-      try {
-        const today = new Date();
-        // Verificar si existe un documento para la fecha actual
-        let existingLiquidity = await myMonthService.getMonthlyLiquidityByDate(
-          userId,
-          today,
-          dayOfMonth
-        );
-
-        // Si no existe, verificar por monthPeriod
-        if (!existingLiquidity) {
-          existingLiquidity = await myMonthService.getMonthlyLiquidity(
-            userId,
-            monthPeriod
-          );
-        }
-
-        // Si aún no existe, crear uno nuevo
-        if (!existingLiquidity) {
-          const previousPeriod = getPreviousMonthPeriod(monthPeriod);
-          const previousBalance = await myMonthService.calculateMonthBalance(
-            userId,
-            previousPeriod
-          );
-
-          await myMonthService.createOrUpdateMonthlyLiquidity(
-            userId,
-            monthPeriod,
-            previousBalance,
-            null,
-            [],
-            undefined,
-            undefined,
-            dayOfMonth
-          );
-          // Recargar después de crear
-          await onSave();
-        }
-      } catch (error) {
-        console.error('Error al verificar/crear monthly liquidity:', error);
-      }
-    };
-
-    if (userId && monthPeriod && dayOfMonth) {
-      ensureMonthlyLiquidityExists();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, monthPeriod, dayOfMonth]);
 
   // Cargar fuentes del mes anterior
   useEffect(() => {

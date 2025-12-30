@@ -101,19 +101,19 @@ export const calculatePeriodDateRange = (
 ): { start: Date; end: Date } => {
   // Fecha de inicio: día de corte del mes actual
   const start = new Date(year, month - 1, dayOfMonth, 0, 0, 0);
-  
+
   // Fecha de fin: día de corte del siguiente mes - 1 segundo
   let endYear = year;
   let endMonth = month + 1;
-  
+
   if (endMonth > 12) {
     endMonth = 1;
     endYear = year + 1;
   }
-  
+
   const end = new Date(endYear, endMonth - 1, dayOfMonth, 23, 59, 59);
   end.setSeconds(end.getSeconds() - 1);
-  
+
   return { start, end };
 };
 
@@ -125,19 +125,46 @@ export const findCurrentPeriod = async (
 ): Promise<MonthlyLiquidityState | null> => {
   const liquidityRef = firestore.collection('monthlyLiquidity');
   const dateTimestamp = firebase.firestore.Timestamp.fromDate(date);
-  
-  // Buscar periodos donde la fecha esté entre startDate y endDate
-  const querySnapshot = await liquidityRef
+
+  // Calcular el periodo basado en la fecha
+  const monthPeriod = calculateMonthPeriod(date, dayOfMonth);
+
+  // Primero buscar por monthPeriod (más eficiente)
+  let querySnapshot = await liquidityRef
     .where('userId', '==', userId)
-    .where('startDate', '<=', dateTimestamp)
-    .where('endDate', '>=', dateTimestamp)
+    .where('monthPeriod', '==', monthPeriod)
     .limit(1)
     .get();
-  
+
+  // Si no se encuentra por monthPeriod, buscar por rango de fechas
+  // Nota: Firestore no permite dos desigualdades en diferentes campos,
+  // así que buscamos solo por startDate <= fecha
   if (querySnapshot.empty) {
+    querySnapshot = await liquidityRef
+      .where('userId', '==', userId)
+      .where('startDate', '<=', dateTimestamp)
+      .orderBy('startDate', 'desc')
+      .limit(10)
+      .get();
+
+    // Filtrar manualmente los que también cumplen endDate >= fecha
+    const matchingDocs = querySnapshot.docs.filter((doc) => {
+      const data = doc.data();
+      const endDate = data.endDate as firebase.firestore.Timestamp;
+      return endDate && endDate >= dateTimestamp;
+    });
+
+    if (matchingDocs.length > 0) {
+      const doc = matchingDocs[0];
+      return {
+        id: doc.id,
+        ...doc.data(),
+      } as MonthlyLiquidityState;
+    }
+
     return null;
   }
-  
+
   const doc = querySnapshot.docs[0];
   return {
     id: doc.id,
@@ -252,11 +279,11 @@ export const myMonthService = {
     finalBalance?: number
   ): Promise<MonthlyLiquidityState> {
     const liquidityRef = firestore.collection('monthlyLiquidity');
-    
+
     // Si no se proporcionan fechas, calcularlas
     let finalStartDate: Date;
     let finalEndDate: Date;
-    
+
     if (startDate && endDate) {
       finalStartDate = startDate;
       finalEndDate = endDate;
@@ -272,9 +299,9 @@ export const myMonthService = {
       finalEndDate = new Date(year, month, 0, 23, 59, 59);
     }
 
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(finalStartDate);
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(finalEndDate);
-    
+    const startTimestamp =
+      firebase.firestore.Timestamp.fromDate(finalStartDate);
+
     // Buscar primero por monthPeriod (más eficiente y evita problemas con desigualdades)
     let querySnapshot = await liquidityRef
       .where('userId', '==', userId)
@@ -292,7 +319,7 @@ export const myMonthService = {
     }
 
     const now = firebase.firestore.Timestamp.now();
-    const data: any = {
+    const data: Partial<MonthlyLiquidityState> = {
       userId,
       monthPeriod,
       startDate: firebase.firestore.Timestamp.fromDate(finalStartDate),
@@ -341,9 +368,22 @@ export const myMonthService = {
     monthPeriod: string,
     dayOfMonth?: number
   ): Promise<MonthlyLiquidityState> {
-    // Obtener el estado de liquidez del mes
-    let liquidity = await this.getMonthlyLiquidity(userId, monthPeriod);
-    
+    // Primero buscar por fecha actual si tenemos dayOfMonth
+    let liquidity: MonthlyLiquidityState | null = null;
+    if (dayOfMonth) {
+      const today = new Date();
+      liquidity = await this.getMonthlyLiquidityByDate(
+        userId,
+        today,
+        dayOfMonth
+      );
+    }
+
+    // Si no se encuentra por fecha, buscar por monthPeriod
+    if (!liquidity) {
+      liquidity = await this.getMonthlyLiquidity(userId, monthPeriod);
+    }
+
     // Si no existe, crear uno con el expectedAmount del mes anterior
     if (!liquidity) {
       const previousPeriod = getPreviousMonthPeriod(monthPeriod);
@@ -385,7 +425,9 @@ export const myMonthService = {
       (liquidity.liquiditySources.reduce(
         (sum, s) => sum + (s.realAmount ?? 0),
         0
-      ) || liquidity.expectedAmount || 0);
+      ) ||
+        liquidity.expectedAmount ||
+        0);
 
     // Calcular balance final
     const finalBalance = initialLiquidity + totalIncomes - totalExpenses;
@@ -418,7 +460,9 @@ export const myMonthService = {
       (liquidity?.liquiditySources.reduce(
         (sum, s) => sum + (s.realAmount ?? 0),
         0
-      ) || liquidity?.expectedAmount || 0);
+      ) ||
+        liquidity?.expectedAmount ||
+        0);
 
     // Obtener todas las transacciones del mes
     const transactions = await this.getTransactions(userId, monthPeriod);
@@ -480,7 +524,7 @@ export const myMonthService = {
     // El expectedAmount del MonthlyLiquidityState debe ser el valor calculado del mes anterior
     // No se actualiza aquí, se mantiene el valor existente
     const currentExpectedAmount = liquidity?.expectedAmount ?? 0;
-    
+
     // El realAmount es la suma de los valores reales de las fuentes
     const realAmount = updatedSources.reduce((sum, s) => {
       return sum + (s.realAmount ?? 0);
@@ -513,7 +557,7 @@ export const myMonthService = {
     const sources = liquidity.liquiditySources || [];
     // Buscar por ID primero
     let sourceIndex = sources.findIndex((s) => s.id === sourceId);
-    
+
     // Si no se encuentra por ID y el sourceId parece ser un índice temporal (source-X),
     // intentar extraer el índice
     if (sourceIndex === -1 && sourceId.startsWith('source-')) {
@@ -525,12 +569,12 @@ export const myMonthService = {
         }
       }
     }
-    
+
     // Si aún no se encuentra, buscar por nombre (fallback para fuentes sin ID)
     if (sourceIndex === -1 && source.name) {
       sourceIndex = sources.findIndex((s) => s.name === source.name);
     }
-    
+
     if (sourceIndex === -1) {
       throw new Error('Liquidity source not found');
     }
@@ -538,8 +582,10 @@ export const myMonthService = {
     const now = firebase.firestore.Timestamp.now();
     // Asegurar que la fuente tenga un ID
     const existingSource = sources[sourceIndex];
-    const sourceIdToUse = existingSource.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+    const sourceIdToUse =
+      existingSource.id ||
+      `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     const updatedSource: LiquiditySource = {
       ...existingSource,
       id: sourceIdToUse,
@@ -553,7 +599,7 @@ export const myMonthService = {
     // El expectedAmount del MonthlyLiquidityState debe ser el valor calculado del mes anterior
     // No se actualiza aquí, se mantiene el valor existente
     const currentExpectedAmount = liquidity.expectedAmount;
-    
+
     // El realAmount es la suma de los valores reales de las fuentes
     const realAmount = updatedSources.reduce((sum, s) => {
       return sum + (s.realAmount ?? 0);
@@ -583,7 +629,7 @@ export const myMonthService = {
     const sources = liquidity.liquiditySources || [];
     // Buscar por ID primero
     let sourceIndex = sources.findIndex((s) => s.id === sourceId);
-    
+
     // Si no se encuentra por ID y el sourceId parece ser un índice temporal (source-X),
     // intentar extraer el índice
     if (sourceIndex === -1 && sourceId.startsWith('source-')) {
@@ -595,16 +641,17 @@ export const myMonthService = {
         }
       }
     }
-    
+
     // Filtrar por ID o por índice
-    const updatedSources = sourceIndex >= 0
-      ? sources.filter((_, idx) => idx !== sourceIndex)
-      : sources.filter((s) => s.id !== sourceId);
+    const updatedSources =
+      sourceIndex >= 0
+        ? sources.filter((_, idx) => idx !== sourceIndex)
+        : sources.filter((s) => s.id !== sourceId);
 
     // El expectedAmount del MonthlyLiquidityState debe ser el valor calculado del mes anterior
     // No se actualiza aquí, se mantiene el valor existente
     const currentExpectedAmount = liquidity.expectedAmount;
-    
+
     // El realAmount es la suma de los valores reales de las fuentes
     const realAmount = updatedSources.reduce((sum, s) => {
       return sum + (s.realAmount ?? 0);
