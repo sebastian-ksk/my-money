@@ -11,6 +11,7 @@ import {
 import type { Transaction } from '@/Redux/features/my-month/my-month-models';
 import type { FixedExpense } from '@/Redux/features/config-my-money/config-my-money-models';
 import { Button } from '@/components/ui';
+import ModalWithContent from '@/components/modal-with-content';
 import { formatCurrency } from '@/utils/currency';
 
 interface ExpenseModalProps {
@@ -160,12 +161,13 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
   };
 
   return (
-    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-      <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
-        <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
-          {editingTransaction ? 'Editar Gasto' : 'Agregar Gasto'}
-        </h3>
-        <form onSubmit={handleSubmit}>
+    <ModalWithContent
+      isOpen={true}
+      onClose={onClose}
+      title={editingTransaction ? 'Editar Gasto' : 'Agregar Gasto'}
+      maxWidth='md'
+    >
+      <form onSubmit={handleSubmit}>
           {/* Tipo de Gasto */}
           <div className='mb-4'>
             <label className='block text-sm font-medium mb-2 text-primary-medium'>
@@ -337,8 +339,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalWithContent>
   );
 };
 

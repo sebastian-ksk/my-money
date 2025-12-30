@@ -6,6 +6,8 @@ import { Button } from '@/components/ui';
 import MonthTabs from '@/features/my-month/widgets/month-tabs/month-tabs';
 import LiquidityModal from '@/features/my-month/widgets/liquidity-modal/liquidity-modal';
 import ExpenseModal from '@/features/my-month/widgets/expense-modal/expense-modal';
+import IncomeModal from '@/features/my-month/widgets/income-modal/income-modal';
+import SavingsModal from '@/features/my-month/widgets/savings-modal/savings-modal';
 import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
 import { selectUser } from '@/Redux/features/auth';
 import {
@@ -17,7 +19,6 @@ import {
   loadFixedExpenses,
   loadExpectedIncomes,
   loadSavingsSources,
-  createSavingsSource,
 } from '@/Redux/features/config-my-money';
 import {
   selectTransactions,
@@ -29,8 +30,6 @@ import {
 } from '@/Redux/features/my-month';
 import {
   loadTransactions,
-  createTransaction,
-  updateTransaction,
   deleteTransaction,
   loadMonthlyLiquidity,
 } from '@/Redux/features/my-month/my-month-thunks';
@@ -41,8 +40,6 @@ import {
 import { formatCurrency } from '@/utils/currency';
 import type { Transaction } from '@/Redux/features/my-month/my-month-models';
 import { useConfirm } from '@/components/ui';
-
-type ModalType = 'expense' | 'income' | 'savings' | null;
 
 const MyMonth = () => {
   const dispatch = useAppDispatch();
@@ -62,22 +59,12 @@ const MyMonth = () => {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-  const [showModal, setShowModal] = useState<ModalType>(null);
   const [showLiquidityModal, setShowLiquidityModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [showSavingsModal, setShowSavingsModal] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
-  const [formData, setFormData] = useState({
-    fixedExpenseId: '',
-    expectedAmount: '',
-    realAmount: '',
-    expectedIncomeId: '',
-    value: '',
-    concept: '',
-    paymentMethod: 'efectivo',
-    savingsSourceId: '',
-    newSavingsSourceName: '',
-  });
 
   // Log para debugging
   useEffect(() => {
@@ -172,32 +159,7 @@ const MyMonth = () => {
       dispatch(loadExpectedIncomes(user.uid));
     }
     setEditingTransaction(transaction || null);
-    setShowModal('income');
-    if (transaction) {
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: transaction.expectedAmount?.toString() || '',
-        realAmount: transaction.value?.toString() || '',
-        expectedIncomeId: transaction.expectedIncomeId || '',
-        value: transaction.value?.toString() || '',
-        concept: transaction.concept || '',
-        paymentMethod: transaction.paymentMethod || 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    } else {
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: '',
-        realAmount: '',
-        expectedIncomeId: '',
-        value: '',
-        concept: '',
-        paymentMethod: 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    }
+    setShowIncomeModal(true);
   };
 
   const handleOpenSavingsModal = (transaction?: Transaction | null) => {
@@ -205,265 +167,7 @@ const MyMonth = () => {
       dispatch(loadSavingsSources(user.uid));
     }
     setEditingTransaction(transaction || null);
-    setShowModal('savings');
-    if (transaction) {
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: '',
-        realAmount: '',
-        expectedIncomeId: '',
-        value: transaction.value?.toString() || '',
-        concept: '',
-        paymentMethod: transaction.paymentMethod || 'efectivo',
-        savingsSourceId: transaction.savingsSourceId || '',
-        newSavingsSourceName: '',
-      });
-    } else {
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: '',
-        realAmount: '',
-        expectedIncomeId: '',
-        value: '',
-        concept: '',
-        paymentMethod: 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    }
-  };
-
-  const handleExpectedIncomeChange = (expectedIncomeId: string) => {
-    const expectedIncome = expectedIncomes.find(
-      (ei) => ei.id === expectedIncomeId
-    );
-    if (expectedIncome) {
-      setFormData({
-        ...formData,
-        expectedIncomeId,
-        expectedAmount: expectedIncome.amount.toString(),
-        realAmount: expectedIncome.amount.toString(), // Por defecto el mismo valor
-      });
-    }
-  };
-
-  const handleSubmitIncome = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.uid) return;
-
-    // Si hay expectedIncomeId, es un ingreso esperado
-    if (formData.expectedIncomeId) {
-      const expectedIncome = expectedIncomes.find(
-        (ei) => ei.id === formData.expectedIncomeId
-      );
-      if (!expectedIncome) return;
-
-      try {
-        if (editingTransaction && editingTransaction.id) {
-          await dispatch(
-            updateTransaction({
-              transactionId: editingTransaction.id,
-              transaction: {
-                value: parseFloat(formData.realAmount),
-                paymentMethod: formData.paymentMethod,
-              },
-            })
-          ).unwrap();
-        } else {
-          await dispatch(
-            createTransaction({
-              userId: user.uid,
-              transaction: {
-                type: 'expected_income',
-                expectedIncomeId: formData.expectedIncomeId,
-                expectedAmount: parseFloat(formData.expectedAmount),
-                value: parseFloat(formData.realAmount),
-                concept: expectedIncome.name,
-                paymentMethod: formData.paymentMethod,
-                date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-                monthPeriod: currentPeriod,
-              },
-            })
-          ).unwrap();
-        }
-
-        await dispatch(
-          loadTransactions({
-            userId: user.uid,
-            monthPeriod: currentPeriod,
-          })
-        ).unwrap();
-
-        setShowModal(null);
-        setEditingTransaction(null);
-        setFormData({
-          fixedExpenseId: '',
-          expectedAmount: '',
-          realAmount: '',
-          expectedIncomeId: '',
-          value: '',
-          concept: '',
-          paymentMethod: 'efectivo',
-          savingsSourceId: '',
-          newSavingsSourceName: '',
-        });
-      } catch (error) {
-        console.error('Error al guardar ingreso:', error);
-      }
-    } else {
-      // Es un ingreso inesperado
-      if (!formData.concept) return;
-
-      try {
-        if (editingTransaction && editingTransaction.id) {
-          await dispatch(
-            updateTransaction({
-              transactionId: editingTransaction.id,
-              transaction: {
-                value: parseFloat(formData.value),
-                concept: formData.concept,
-                paymentMethod: formData.paymentMethod,
-              },
-            })
-          ).unwrap();
-        } else {
-          await dispatch(
-            createTransaction({
-              userId: user.uid,
-              transaction: {
-                type: 'unexpected_income',
-                value: parseFloat(formData.value),
-                concept: formData.concept,
-                paymentMethod: formData.paymentMethod,
-                date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-                monthPeriod: currentPeriod,
-              },
-            })
-          ).unwrap();
-        }
-
-        await dispatch(
-          loadTransactions({
-            userId: user.uid,
-            monthPeriod: currentPeriod,
-          })
-        ).unwrap();
-
-        setShowModal(null);
-        setEditingTransaction(null);
-        setFormData({
-          fixedExpenseId: '',
-          expectedAmount: '',
-          realAmount: '',
-          expectedIncomeId: '',
-          value: '',
-          concept: '',
-          paymentMethod: 'efectivo',
-          savingsSourceId: '',
-          newSavingsSourceName: '',
-        });
-      } catch (error) {
-        console.error('Error al guardar ingreso inesperado:', error);
-      }
-    }
-  };
-
-  const handleSubmitSavings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.uid || !formData.value) return;
-
-    let savingsSourceId = formData.savingsSourceId;
-
-    // Si el usuario quiere crear un nuevo savings source
-    if (formData.savingsSourceId === 'new' && formData.newSavingsSourceName) {
-      try {
-        const newSource = await dispatch(
-          createSavingsSource({
-            userId: user.uid,
-            source: {
-              name: formData.newSavingsSourceName,
-              amount: 0,
-            },
-          })
-        ).unwrap();
-
-        if (!newSource.id) {
-          console.error('Error al crear fuente de ahorro: no se obtuvo ID');
-          return;
-        }
-        savingsSourceId = newSource.id;
-        await dispatch(loadSavingsSources(user.uid));
-      } catch (error) {
-        console.error('Error al crear fuente de ahorro:', error);
-        return;
-      }
-    }
-
-    if (!savingsSourceId) {
-      console.error('Debe seleccionar o crear una fuente de ahorro');
-      return;
-    }
-
-    const savingsSource = savingsSources.find(
-      (ss) => ss.id === savingsSourceId
-    );
-    if (!savingsSource) {
-      console.error('Fuente de ahorro no encontrada');
-      return;
-    }
-
-    try {
-      if (editingTransaction && editingTransaction.id) {
-        if (!editingTransaction.id) return;
-        await dispatch(
-          updateTransaction({
-            transactionId: editingTransaction.id,
-            transaction: {
-              value: parseFloat(formData.value),
-              paymentMethod: formData.paymentMethod,
-            },
-          })
-        ).unwrap();
-      } else {
-        await dispatch(
-          createTransaction({
-            userId: user.uid,
-            transaction: {
-              type: 'savings',
-              value: parseFloat(formData.value),
-              concept: savingsSource.name,
-              paymentMethod: formData.paymentMethod,
-              date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-              monthPeriod: currentPeriod,
-              savingsSourceId,
-            },
-          })
-        ).unwrap();
-      }
-
-      await dispatch(
-        loadTransactions({
-          userId: user.uid,
-          monthPeriod: currentPeriod,
-        })
-      ).unwrap();
-
-      setShowModal(null);
-      setEditingTransaction(null);
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: '',
-        realAmount: '',
-        expectedIncomeId: '',
-        value: '',
-        concept: '',
-        paymentMethod: 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    } catch (error) {
-      console.error('Error al guardar ahorro:', error);
-    }
+    setShowSavingsModal(true);
   };
 
   const handleDeleteTransaction = async (transactionId: string) => {
@@ -649,16 +353,14 @@ const MyMonth = () => {
         >
           {/* Balance Section */}
           <div className='mb-6'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-3 text-sm'>
-                <div className='text-zinc-600'>
-                  <span className='font-medium'>El mes pasado te quedó:</span>{' '}
-                  {formatCurrency(displayLiquidity ?? 0, currency)}
-                </div>
+            <div className='flex items-center gap-3 text-sm'>
+              <div className='text-zinc-600'>
+                <span className='font-medium'>El mes pasado te quedó:</span>{' '}
+                {formatCurrency(displayLiquidity ?? 0, currency)}
               </div>
               <Button
                 onClick={() => setShowLiquidityModal(true)}
-                variant='secondary'
+                variant='ghost'
                 size='sm'
                 icon={
                   <svg
@@ -675,9 +377,8 @@ const MyMonth = () => {
                     />
                   </svg>
                 }
-              >
-                ¿Cuánto te quedó del mes pasado?
-              </Button>
+                iconOnly
+              />
             </div>
           </div>
 
@@ -940,296 +641,61 @@ const MyMonth = () => {
       </div>
 
       {/* Modal para Ingreso */}
-      {showModal === 'income' && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
-            <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
-              {formData.expectedIncomeId
-                ? 'Agregar Ingreso Esperado'
-                : 'Agregar Ingreso Inesperado'}
-            </h3>
-            <form onSubmit={handleSubmitIncome}>
-              <div className='mb-4'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Tipo de Ingreso
-                </label>
-                <select
-                  value={formData.expectedIncomeId || 'unexpected'}
-                  onChange={(e) => {
-                    if (e.target.value === 'unexpected') {
-                      setFormData({
-                        ...formData,
-                        expectedIncomeId: '',
-                        expectedAmount: '',
-                        realAmount: '',
-                      });
-                    } else {
-                      handleExpectedIncomeChange(e.target.value);
-                    }
-                  }}
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  aria-label='Tipo de ingreso'
-                >
-                  <option value='unexpected'>Ingreso Inesperado</option>
-                  {expectedIncomes.length > 0 && (
-                    <optgroup label='Ingresos Esperados'>
-                      {expectedIncomes.map((ei) => (
-                        <option key={ei.id} value={ei.id}>
-                          {ei.name} - {formatCurrency(ei.amount, currency)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-              </div>
-
-              {formData.expectedIncomeId ? (
-                <>
-                  <div className='mb-4'>
-                    <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                      Valor Esperado
-                    </label>
-                    <input
-                      type='number'
-                      step='0.01'
-                      required
-                      value={formData.expectedAmount}
-                      readOnly
-                      className='w-full px-4 py-2 border border-zinc-200 rounded-lg bg-zinc-100 text-zinc-600'
-                      aria-label='Valor esperado'
-                    />
-                  </div>
-
-                  <div className='mb-4'>
-                    <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                      Valor Real *
-                    </label>
-                    <input
-                      type='number'
-                      step='0.01'
-                      required
-                      value={formData.realAmount}
-                      onChange={(e) =>
-                        setFormData({ ...formData, realAmount: e.target.value })
-                      }
-                      className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                      placeholder='0.00'
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className='mb-4'>
-                    <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                      Concepto *
-                    </label>
-                    <input
-                      type='text'
-                      required
-                      value={formData.concept}
-                      onChange={(e) =>
-                        setFormData({ ...formData, concept: e.target.value })
-                      }
-                      className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                      placeholder='Descripción del ingreso'
-                    />
-                  </div>
-
-                  <div className='mb-4'>
-                    <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                      Valor *
-                    </label>
-                    <input
-                      type='number'
-                      step='0.01'
-                      required
-                      value={formData.value}
-                      onChange={(e) =>
-                        setFormData({ ...formData, value: e.target.value })
-                      }
-                      className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                      placeholder='0.00'
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className='mb-6'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Medio de Pago *
-                </label>
-                <select
-                  required
-                  value={formData.paymentMethod}
-                  onChange={(e) =>
-                    setFormData({ ...formData, paymentMethod: e.target.value })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  aria-label='Medio de pago'
-                >
-                  <option value='efectivo'>Efectivo</option>
-                  <option value='tarjeta_debito'>Tarjeta Débito</option>
-                  <option value='tarjeta_credito'>Tarjeta Crédito</option>
-                  <option value='transferencia'>Transferencia</option>
-                  <option value='nequi'>Nequi</option>
-                  <option value='daviplata'>Daviplata</option>
-                  <option value='otro'>Otro</option>
-                </select>
-              </div>
-
-              <div className='flex gap-3'>
-                <Button
-                  type='button'
-                  onClick={() => setShowModal(null)}
-                  variant='outline'
-                  size='md'
-                  className='flex-1'
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type='submit'
-                  variant='secondary'
-                  size='md'
-                  className='flex-1'
-                  disabled={
-                    formData.expectedIncomeId
-                      ? !formData.realAmount
-                      : !formData.value || !formData.concept
-                  }
-                >
-                  Guardar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {showIncomeModal && (
+        <IncomeModal
+          userId={user?.uid || ''}
+          monthPeriod={currentPeriod}
+          expectedIncomes={expectedIncomes}
+          currency={currency}
+          editingTransaction={editingTransaction}
+          onClose={() => {
+            setShowIncomeModal(false);
+            setEditingTransaction(null);
+          }}
+          onSave={async () => {
+            // Asegurar que los ingresos esperados estén cargados
+            if (user?.uid && expectedIncomes.length === 0) {
+              await dispatch(loadExpectedIncomes(user.uid));
+            }
+            await dispatch(
+              loadTransactions({
+                userId: user?.uid || '',
+                monthPeriod: currentPeriod,
+              })
+            ).unwrap();
+            setShowIncomeModal(false);
+            setEditingTransaction(null);
+          }}
+        />
       )}
 
       {/* Modal para Ahorro */}
-      {showModal === 'savings' && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
-            <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
-              Agregar Ahorro
-            </h3>
-            <form onSubmit={handleSubmitSavings}>
-              <div className='mb-4'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Fuente de Ahorro *
-                </label>
-                <select
-                  required
-                  value={formData.savingsSourceId}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      savingsSourceId: e.target.value,
-                      newSavingsSourceName: '',
-                    })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  aria-label='Fuente de ahorro'
-                >
-                  <option value=''>Seleccione una fuente de ahorro</option>
-                  {savingsSources.map((ss) => (
-                    <option key={ss.id} value={ss.id}>
-                      {ss.name}
-                    </option>
-                  ))}
-                  <option value='new'>+ Crear nueva fuente de ahorro</option>
-                </select>
-              </div>
-
-              {formData.savingsSourceId === 'new' && (
-                <div className='mb-4'>
-                  <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                    Nombre de la Nueva Fuente de Ahorro *
-                  </label>
-                  <input
-                    type='text'
-                    required
-                    value={formData.newSavingsSourceName}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        newSavingsSourceName: e.target.value,
-                      })
-                    }
-                    className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                    placeholder='Ej: Cuenta de ahorros, Caja fuerte, etc.'
-                  />
-                </div>
-              )}
-
-              <div className='mb-4'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Valor *
-                </label>
-                <input
-                  type='number'
-                  step='0.01'
-                  required
-                  value={formData.value}
-                  onChange={(e) =>
-                    setFormData({ ...formData, value: e.target.value })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder='0.00'
-                />
-              </div>
-
-              <div className='mb-6'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Medio de Pago *
-                </label>
-                <select
-                  required
-                  value={formData.paymentMethod}
-                  onChange={(e) =>
-                    setFormData({ ...formData, paymentMethod: e.target.value })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  aria-label='Medio de pago'
-                >
-                  <option value='efectivo'>Efectivo</option>
-                  <option value='tarjeta_debito'>Tarjeta Débito</option>
-                  <option value='tarjeta_credito'>Tarjeta Crédito</option>
-                  <option value='transferencia'>Transferencia</option>
-                  <option value='nequi'>Nequi</option>
-                  <option value='daviplata'>Daviplata</option>
-                  <option value='otro'>Otro</option>
-                </select>
-              </div>
-
-              <div className='flex gap-3'>
-                <Button
-                  type='button'
-                  onClick={() => setShowModal(null)}
-                  variant='outline'
-                  size='md'
-                  className='flex-1'
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type='submit'
-                  variant='secondary'
-                  size='md'
-                  className='flex-1'
-                  disabled={
-                    !formData.savingsSourceId ||
-                    !formData.value ||
-                    (formData.savingsSourceId === 'new' &&
-                      !formData.newSavingsSourceName)
-                  }
-                >
-                  Guardar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {showSavingsModal && (
+        <SavingsModal
+          userId={user?.uid || ''}
+          monthPeriod={currentPeriod}
+          savingsSources={savingsSources}
+          currency={currency}
+          editingTransaction={editingTransaction}
+          onClose={() => {
+            setShowSavingsModal(false);
+            setEditingTransaction(null);
+          }}
+          onSave={async () => {
+            // Asegurar que las fuentes de ahorro estén cargadas
+            if (user?.uid && savingsSources.length === 0) {
+              await dispatch(loadSavingsSources(user.uid));
+            }
+            await dispatch(
+              loadTransactions({
+                userId: user?.uid || '',
+                monthPeriod: currentPeriod,
+              })
+            ).unwrap();
+            setShowSavingsModal(false);
+            setEditingTransaction(null);
+          }}
+        />
       )}
 
       {/* Modal para Líquido Inicial */}

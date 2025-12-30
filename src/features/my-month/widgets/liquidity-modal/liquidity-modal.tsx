@@ -14,6 +14,7 @@ import type {
   MonthlyLiquidityState,
 } from '@/Redux/features/my-month/my-month-models';
 import { Button, useConfirm } from '@/components/ui';
+import ModalWithContent from '@/components/modal-with-content';
 import { formatCurrency } from '@/utils/currency';
 import { myMonthService } from '@/services/Firebase/my-month-service';
 
@@ -327,223 +328,244 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
   };
 
   return (
-    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-      <div className='bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto'>
-        <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
-          Líquido del Mes Anterior
-        </h3>
+    <ModalWithContent
+      isOpen={true}
+      onClose={onClose}
+      title='Líquido del Mes Anterior'
+      maxWidth='2xl'
+    >
+      {/* Selector de Modo */}
+      <div className='mb-6 flex gap-2'>
+        <Button
+          onClick={() => setMode('simple')}
+          variant={mode === 'simple' ? 'secondary' : 'outline'}
+          size='md'
+          className='flex-1'
+        >
+          Valor Neto
+        </Button>
+        <Button
+          onClick={() => setMode('sources')}
+          variant={mode === 'sources' ? 'secondary' : 'outline'}
+          size='md'
+          className='flex-1'
+        >
+          Con Fuentes
+        </Button>
+      </div>
 
-        {/* Selector de Modo */}
-        <div className='mb-6 flex gap-2'>
-          <Button
-            onClick={() => setMode('simple')}
-            variant={mode === 'simple' ? 'secondary' : 'outline'}
-            size='md'
-            className='flex-1'
-          >
-            Valor Neto
-          </Button>
-          <Button
-            onClick={() => setMode('sources')}
-            variant={mode === 'sources' ? 'secondary' : 'outline'}
-            size='md'
-            className='flex-1'
-          >
-            Con Fuentes
-          </Button>
+      {/* Resumen */}
+      <div className='mb-6 p-4 bg-zinc-50 rounded-lg'>
+        <div className='flex justify-between items-center mb-2'>
+          <span className='font-medium text-zinc-700'>Total Esperado:</span>
+          <span className='text-lg font-semibold text-zinc-800'>
+            {formatCurrency(baseExpected, currency)}
+          </span>
+          <span className='text-xs text-zinc-500'>
+            (Calculado del mes anterior)
+          </span>
         </div>
-
-        {/* Resumen */}
-        <div className='mb-6 p-4 bg-zinc-50 rounded-lg'>
-          <div className='flex justify-between items-center mb-2'>
-            <span className='font-medium text-zinc-700'>Total Esperado:</span>
-            <span className='text-lg font-semibold text-zinc-800'>
-              {formatCurrency(baseExpected, currency)}
-            </span>
-            <span className='text-xs text-zinc-500'>
-              (Calculado del mes anterior)
-            </span>
-          </div>
-          <div className='flex justify-between items-center'>
-            <span className='font-medium text-zinc-700'>Total Real:</span>
-            <span className='text-lg font-semibold text-green-600'>
-              {formatCurrency(
-                mode === 'simple'
-                  ? parseFloat(simpleForm.watch('realAmount')) || baseReal || 0
-                  : totalRealFromSources > 0
-                  ? totalRealFromSources
-                  : baseReal || 0,
-                currency
-              )}
-            </span>
-            <span className='text-xs text-zinc-500'>
-              {mode === 'simple'
-                ? '(Valor real del usuario)'
-                : '(Suma de todas las fuentes)'}
-            </span>
-          </div>
+        <div className='flex justify-between items-center'>
+          <span className='font-medium text-zinc-700'>Total Real:</span>
+          <span className='text-lg font-semibold text-green-600'>
+            {formatCurrency(
+              mode === 'simple'
+                ? parseFloat(simpleForm.watch('realAmount')) || baseReal || 0
+                : totalRealFromSources > 0
+                ? totalRealFromSources
+                : baseReal || 0,
+              currency
+            )}
+          </span>
+          <span className='text-xs text-zinc-500'>
+            {mode === 'simple'
+              ? '(Valor real del usuario)'
+              : '(Suma de todas las fuentes)'}
+          </span>
         </div>
+      </div>
 
-        {/* Modo Simple */}
-        {mode === 'simple' && (
-          <form
-            onSubmit={simpleForm.handleSubmit(handleSaveSimple)}
-            className='mb-6 space-y-4'
+      {/* Modo Simple */}
+      {mode === 'simple' && (
+        <form
+          onSubmit={simpleForm.handleSubmit(handleSaveSimple)}
+          className='mb-6 space-y-4'
+        >
+          <div>
+            <label className='block text-sm font-medium mb-2 text-primary-medium'>
+              Valor Esperado (Calculado del mes anterior)
+            </label>
+            <input
+              type='number'
+              step='0.01'
+              value={baseExpected}
+              readOnly
+              className='w-full px-4 py-2 border border-zinc-200 rounded-lg bg-zinc-100 text-zinc-600'
+              placeholder='0.00'
+              aria-label='Valor esperado'
+            />
+          </div>
+          <div>
+            <label className='block text-sm font-medium mb-2 text-primary-medium'>
+              Valor Real *
+            </label>
+            <input
+              type='number'
+              step='0.01'
+              {...simpleForm.register('realAmount', {
+                required: 'El valor real es requerido',
+                min: {
+                  value: 0,
+                  message: 'El valor debe ser mayor o igual a 0',
+                },
+              })}
+              className='w-full px-4 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
+              placeholder='Ingrese el valor real que quedó'
+              aria-label='Valor real'
+            />
+            {simpleForm.formState.errors.realAmount && (
+              <p className='text-sm text-red-500 mt-1'>
+                {simpleForm.formState.errors.realAmount.message}
+              </p>
+            )}
+          </div>
+          <Button
+            type='submit'
+            variant='secondary'
+            size='md'
+            className='w-full'
+            disabled={!simpleForm.watch('realAmount')}
           >
-            <div>
-              <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                Valor Esperado (Calculado del mes anterior)
-              </label>
-              <input
-                type='number'
-                step='0.01'
-                value={baseExpected}
-                readOnly
-                className='w-full px-4 py-2 border border-zinc-200 rounded-lg bg-zinc-100 text-zinc-600'
-                placeholder='0.00'
-                aria-label='Valor esperado'
-              />
-            </div>
-            <div>
-              <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                Valor Real *
-              </label>
-              <input
-                type='number'
-                step='0.01'
-                {...simpleForm.register('realAmount', {
-                  required: 'El valor real es requerido',
-                  min: {
-                    value: 0,
-                    message: 'El valor debe ser mayor o igual a 0',
-                  },
-                })}
-                className='w-full px-4 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
-                placeholder='Ingrese el valor real que quedó'
-                aria-label='Valor real'
-              />
-              {simpleForm.formState.errors.realAmount && (
-                <p className='text-sm text-red-500 mt-1'>
-                  {simpleForm.formState.errors.realAmount.message}
-                </p>
-              )}
-            </div>
-            <Button
-              type='submit'
-              variant='secondary'
-              size='md'
-              className='w-full'
-              disabled={!simpleForm.watch('realAmount')}
-            >
-              Guardar Valor Neto
-            </Button>
-          </form>
-        )}
+            Guardar Valor Neto
+          </Button>
+        </form>
+      )}
 
-        {/* Modo con Fuentes */}
-        {mode === 'sources' && (
-          <>
-            {/* Lista de Fuentes */}
-            <div className='mb-6'>
-              <h4 className='text-lg font-semibold mb-3 text-primary-dark'>
-                Fuentes de Liquidez
-              </h4>
-              <div className='space-y-3'>
-                {sources.map((source: LiquiditySource, index: number) => (
-                  <div
-                    key={source.id || `source-${index}`}
-                    className='p-4 border border-zinc-200 rounded-lg'
-                  >
-                    {editingSourceId === source.id ? (
-                      // Modo edición
-                      <form
-                        onSubmit={editSourceForm.handleSubmit(handleSaveEdit)}
-                        className='space-y-3'
-                      >
+      {/* Modo con Fuentes */}
+      {mode === 'sources' && (
+        <>
+          {/* Lista de Fuentes */}
+          <div className='mb-6'>
+            <h4 className='text-lg font-semibold mb-3 text-primary-dark'>
+              Fuentes de Liquidez
+            </h4>
+            <div className='space-y-3'>
+              {sources.map((source: LiquiditySource, index: number) => (
+                <div
+                  key={source.id || `source-${index}`}
+                  className='p-4 border border-zinc-200 rounded-lg'
+                >
+                  {editingSourceId === source.id ? (
+                    // Modo edición
+                    <form
+                      onSubmit={editSourceForm.handleSubmit(handleSaveEdit)}
+                      className='space-y-3'
+                    >
+                      <div className='font-medium text-zinc-800'>
+                        {source.name}
+                      </div>
+                      <div className='text-sm text-zinc-600 mb-2'>
+                        <span className='font-medium'>Valor Esperado:</span>{' '}
+                        {formatCurrency(source.expectedAmount, currency)}
+                      </div>
+                      <div>
+                        <label className='block text-sm font-medium mb-1 text-primary-medium'>
+                          Valor Real *
+                        </label>
+                        <input
+                          type='number'
+                          step='0.01'
+                          {...editSourceForm.register('realAmount', {
+                            required: 'El valor real es requerido',
+                            min: {
+                              value: 0,
+                              message: 'El valor debe ser mayor o igual a 0',
+                            },
+                          })}
+                          className='w-full px-3 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
+                          placeholder='Ingrese el valor real'
+                          aria-label='Valor real'
+                        />
+                        {editSourceForm.formState.errors.realAmount && (
+                          <p className='text-xs text-red-500 mt-1'>
+                            {editSourceForm.formState.errors.realAmount.message}
+                          </p>
+                        )}
+                      </div>
+                      <div className='flex gap-2'>
+                        <Button
+                          type='submit'
+                          variant='secondary'
+                          size='sm'
+                          disabled={!editSourceForm.watch('realAmount')}
+                          className='flex-1'
+                        >
+                          Guardar
+                        </Button>
+                        <Button
+                          type='button'
+                          onClick={handleCancelEdit}
+                          variant='outline'
+                          size='sm'
+                          className='flex-1'
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    // Modo visualización
+                    <div className='flex justify-between items-center'>
+                      <div className='flex-1'>
                         <div className='font-medium text-zinc-800'>
                           {source.name}
                         </div>
-                        <div className='text-sm text-zinc-600 mb-2'>
-                          <span className='font-medium'>Valor Esperado:</span>{' '}
-                          {formatCurrency(source.expectedAmount, currency)}
-                        </div>
-                        <div>
-                          <label className='block text-sm font-medium mb-1 text-primary-medium'>
-                            Valor Real *
-                          </label>
-                          <input
-                            type='number'
-                            step='0.01'
-                            {...editSourceForm.register('realAmount', {
-                              required: 'El valor real es requerido',
-                              min: {
-                                value: 0,
-                                message: 'El valor debe ser mayor o igual a 0',
-                              },
-                            })}
-                            className='w-full px-3 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
-                            placeholder='Ingrese el valor real'
-                            aria-label='Valor real'
-                          />
-                          {editSourceForm.formState.errors.realAmount && (
-                            <p className='text-xs text-red-500 mt-1'>
-                              {
-                                editSourceForm.formState.errors.realAmount
-                                  .message
-                              }
-                            </p>
+                        <div className='text-sm text-zinc-600 mt-1 space-y-1'>
+                          <div>
+                            <span className='font-medium'>Valor Esperado:</span>{' '}
+                            {formatCurrency(source.expectedAmount, currency)}
+                          </div>
+                          {source.realAmount !== null ? (
+                            <div>
+                              <span className='font-medium'>Valor Real:</span>{' '}
+                              {formatCurrency(source.realAmount, currency)}
+                            </div>
+                          ) : (
+                            <div className='text-zinc-400 italic'>
+                              Valor Real: No ingresado
+                            </div>
                           )}
                         </div>
-                        <div className='flex gap-2'>
+                      </div>
+                      <div className='flex gap-2'>
+                        <Button
+                          onClick={() => handleEditSource(source)}
+                          variant='ghost'
+                          size='sm'
+                          icon={
+                            <svg
+                              className='w-4 h-4'
+                              fill='none'
+                              stroke='currentColor'
+                              viewBox='0 0 24 24'
+                            >
+                              <path
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                                strokeWidth={2}
+                                d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                              />
+                            </svg>
+                          }
+                          iconOnly
+                        />
+                        {sources.length > 1 && source.id && (
                           <Button
-                            type='submit'
-                            variant='secondary'
-                            size='sm'
-                            disabled={!editSourceForm.watch('realAmount')}
-                            className='flex-1'
-                          >
-                            Guardar
-                          </Button>
-                          <Button
-                            type='button'
-                            onClick={handleCancelEdit}
-                            variant='outline'
-                            size='sm'
-                            className='flex-1'
-                          >
-                            Cancelar
-                          </Button>
-                        </div>
-                      </form>
-                    ) : (
-                      // Modo visualización
-                      <div className='flex justify-between items-center'>
-                        <div className='flex-1'>
-                          <div className='font-medium text-zinc-800'>
-                            {source.name}
-                          </div>
-                          <div className='text-sm text-zinc-600 mt-1 space-y-1'>
-                            <div>
-                              <span className='font-medium'>
-                                Valor Esperado:
-                              </span>{' '}
-                              {formatCurrency(source.expectedAmount, currency)}
-                            </div>
-                            {source.realAmount !== null ? (
-                              <div>
-                                <span className='font-medium'>Valor Real:</span>{' '}
-                                {formatCurrency(source.realAmount, currency)}
-                              </div>
-                            ) : (
-                              <div className='text-zinc-400 italic'>
-                                Valor Real: No ingresado
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className='flex gap-2'>
-                          <Button
-                            onClick={() => handleEditSource(source)}
+                            onClick={() => {
+                              if (source.id) {
+                                handleDeleteSource(source.id);
+                              }
+                            }}
                             variant='ghost'
                             size='sm'
                             icon={
@@ -557,200 +579,172 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
                                   strokeLinecap='round'
                                   strokeLinejoin='round'
                                   strokeWidth={2}
-                                  d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                                  d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
                                 />
                               </svg>
                             }
                             iconOnly
                           />
-                          {sources.length > 1 && source.id && (
-                            <Button
-                              onClick={() => {
-                                if (source.id) {
-                                  handleDeleteSource(source.id);
-                                }
-                              }}
-                              variant='ghost'
-                              size='sm'
-                              icon={
-                                <svg
-                                  className='w-4 h-4'
-                                  fill='none'
-                                  stroke='currentColor'
-                                  viewBox='0 0 24 24'
-                                >
-                                  <path
-                                    strokeLinecap='round'
-                                    strokeLinejoin='round'
-                                    strokeWidth={2}
-                                    d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
-                                  />
-                                </svg>
-                              }
-                              iconOnly
-                            />
-                          )}
-                        </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Agregar Fuente */}
-            <div className='mb-6 p-4 border border-zinc-200 rounded-lg bg-zinc-50'>
-              <h4 className='text-md font-semibold mb-3 text-primary-dark'>
-                Agregar Fuente
-              </h4>
-              <form
-                onSubmit={sourceForm.handleSubmit(handleAddSource)}
-                className='space-y-3'
-              >
-                {availableSourceNames.length > 0 && (
-                  <div>
-                    <label className='block text-sm font-medium mb-1'>
-                      Seleccionar Fuente Existente
-                    </label>
-                    <select
-                      value={selectedSourceName}
-                      onChange={(e) => {
-                        setSelectedSourceName(e.target.value);
-                        const existing = sources.find(
-                          (s) => s.name === e.target.value
-                        );
-                        if (existing) {
-                          sourceForm.setValue('sourceName', e.target.value);
-                          sourceForm.setValue(
-                            'realAmount',
-                            existing.realAmount?.toString() || ''
-                          );
-                        } else {
-                          sourceForm.setValue('sourceName', e.target.value);
-                          sourceForm.setValue('realAmount', '');
-                        }
-                      }}
-                      className='w-full px-3 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
-                      aria-label='Seleccionar fuente existente'
-                    >
-                      <option value=''>Seleccione una fuente existente</option>
-                      {availableSourceNames.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div>
-                  <label className='block text-sm font-medium mb-1'>
-                    {selectedSourceName
-                      ? 'Actualizar Valores'
-                      : 'Nombre de Nueva Fuente'}
-                  </label>
-                  {selectedSourceName ? (
-                    <input
-                      type='text'
-                      value={selectedSourceName}
-                      readOnly
-                      className='w-full px-3 py-2 border border-zinc-200 rounded-lg bg-zinc-100 text-zinc-600'
-                      aria-label='Nombre de la fuente'
-                    />
-                  ) : (
-                    <input
-                      type='text'
-                      {...sourceForm.register('sourceName', {
-                        required:
-                          !selectedSourceName && 'El nombre es requerido',
-                      })}
-                      onChange={(e) => {
-                        sourceForm.setValue('sourceName', e.target.value);
-                        setSelectedSourceName('');
-                      }}
-                      className='w-full px-3 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
-                      placeholder='Nombre de la fuente (ej: Efectivo, Banco, etc.)'
-                      aria-label='Nombre de la nueva fuente'
-                    />
-                  )}
-                  {sourceForm.formState.errors.sourceName && (
-                    <p className='text-xs text-red-500 mt-1'>
-                      {sourceForm.formState.errors.sourceName.message}
-                    </p>
+                    </div>
                   )}
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Agregar Fuente */}
+          <div className='mb-6 p-4 border border-zinc-200 rounded-lg bg-zinc-50'>
+            <h4 className='text-md font-semibold mb-3 text-primary-dark'>
+              Agregar Fuente
+            </h4>
+            <form
+              onSubmit={sourceForm.handleSubmit(handleAddSource)}
+              className='space-y-3'
+            >
+              {availableSourceNames.length > 0 && (
                 <div>
                   <label className='block text-sm font-medium mb-1'>
-                    Valor Real *
+                    Seleccionar Fuente Existente
                   </label>
-                  <input
-                    type='number'
-                    step='0.01'
-                    {...sourceForm.register('realAmount', {
-                      required: 'El valor real es requerido',
-                      min: {
-                        value: 0,
-                        message: 'El valor debe ser mayor o igual a 0',
-                      },
-                    })}
-                    className='w-full px-3 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
-                    placeholder='Ingrese el valor real'
-                    aria-label='Valor real'
-                  />
-                  {sourceForm.formState.errors.realAmount && (
-                    <p className='text-xs text-red-500 mt-1'>
-                      {sourceForm.formState.errors.realAmount.message}
-                    </p>
-                  )}
-                  {(() => {
-                    const sourceName =
-                      selectedSourceName || sourceForm.watch('sourceName');
-                    const prevSource = previousMonthSources.find(
-                      (s) => s.name === sourceName
-                    );
-                    const expectedValue = prevSource?.realAmount ?? 0;
-                    if (sourceName) {
-                      return (
-                        <p className='text-xs text-zinc-500 mt-1'>
-                          Valor esperado:{' '}
-                          {formatCurrency(expectedValue, currency)}{' '}
-                          {prevSource
-                            ? '(del mes anterior)'
-                            : '(nueva fuente, sin valor anterior)'}
-                        </p>
+                  <select
+                    value={selectedSourceName}
+                    onChange={(e) => {
+                      setSelectedSourceName(e.target.value);
+                      const existing = sources.find(
+                        (s) => s.name === e.target.value
                       );
-                    }
-                    return null;
-                  })()}
+                      if (existing) {
+                        sourceForm.setValue('sourceName', e.target.value);
+                        sourceForm.setValue(
+                          'realAmount',
+                          existing.realAmount?.toString() || ''
+                        );
+                      } else {
+                        sourceForm.setValue('sourceName', e.target.value);
+                        sourceForm.setValue('realAmount', '');
+                      }
+                    }}
+                    className='w-full px-3 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
+                    aria-label='Seleccionar fuente existente'
+                  >
+                    <option value=''>Seleccione una fuente existente</option>
+                    {availableSourceNames.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <Button
-                  type='submit'
-                  variant='secondary'
-                  size='md'
-                  disabled={
-                    !sourceForm.watch('sourceName') ||
-                    !sourceForm.watch('realAmount')
+              )}
+              <div>
+                <label className='block text-sm font-medium mb-1'>
+                  {selectedSourceName
+                    ? 'Actualizar Valores'
+                    : 'Nombre de Nueva Fuente'}
+                </label>
+                {selectedSourceName ? (
+                  <input
+                    type='text'
+                    value={selectedSourceName}
+                    readOnly
+                    className='w-full px-3 py-2 border border-zinc-200 rounded-lg bg-zinc-100 text-zinc-600'
+                    aria-label='Nombre de la fuente'
+                  />
+                ) : (
+                  <input
+                    type='text'
+                    {...sourceForm.register('sourceName', {
+                      required: !selectedSourceName && 'El nombre es requerido',
+                    })}
+                    onChange={(e) => {
+                      sourceForm.setValue('sourceName', e.target.value);
+                      setSelectedSourceName('');
+                    }}
+                    className='w-full px-3 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
+                    placeholder='Nombre de la fuente (ej: Efectivo, Banco, etc.)'
+                    aria-label='Nombre de la nueva fuente'
+                  />
+                )}
+                {sourceForm.formState.errors.sourceName && (
+                  <p className='text-xs text-red-500 mt-1'>
+                    {sourceForm.formState.errors.sourceName.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className='block text-sm font-medium mb-1'>
+                  Valor Real *
+                </label>
+                <input
+                  type='number'
+                  step='0.01'
+                  {...sourceForm.register('realAmount', {
+                    required: 'El valor real es requerido',
+                    min: {
+                      value: 0,
+                      message: 'El valor debe ser mayor o igual a 0',
+                    },
+                  })}
+                  className='w-full px-3 py-2 border border-zinc-200 rounded-lg text-zinc-900 bg-white'
+                  placeholder='Ingrese el valor real'
+                  aria-label='Valor real'
+                />
+                {sourceForm.formState.errors.realAmount && (
+                  <p className='text-xs text-red-500 mt-1'>
+                    {sourceForm.formState.errors.realAmount.message}
+                  </p>
+                )}
+                {(() => {
+                  const sourceName =
+                    selectedSourceName || sourceForm.watch('sourceName');
+                  const prevSource = previousMonthSources.find(
+                    (s) => s.name === sourceName
+                  );
+                  const expectedValue = prevSource?.realAmount ?? 0;
+                  if (sourceName) {
+                    return (
+                      <p className='text-xs text-zinc-500 mt-1'>
+                        Valor esperado:{' '}
+                        {formatCurrency(expectedValue, currency)}{' '}
+                        {prevSource
+                          ? '(del mes anterior)'
+                          : '(nueva fuente, sin valor anterior)'}
+                      </p>
+                    );
                   }
-                >
-                  {selectedSourceName ? 'Actualizar Fuente' : 'Agregar Fuente'}
-                </Button>
-              </form>
-            </div>
-          </>
-        )}
+                  return null;
+                })()}
+              </div>
+              <Button
+                type='submit'
+                variant='secondary'
+                size='md'
+                disabled={
+                  !sourceForm.watch('sourceName') ||
+                  !sourceForm.watch('realAmount')
+                }
+              >
+                {selectedSourceName ? 'Actualizar Fuente' : 'Agregar Fuente'}
+              </Button>
+            </form>
+          </div>
+        </>
+      )}
 
-        <div className='flex gap-3'>
-          <Button
-            type='button'
-            onClick={onClose}
-            variant='outline'
-            size='md'
-            className='flex-1'
-          >
-            Cerrar
-          </Button>
-        </div>
+      <div className='flex gap-3'>
+        <Button
+          type='button'
+          onClick={onClose}
+          variant='outline'
+          size='md'
+          className='flex-1'
+        >
+          Cerrar
+        </Button>
       </div>
-    </div>
+    </ModalWithContent>
   );
 };
 
