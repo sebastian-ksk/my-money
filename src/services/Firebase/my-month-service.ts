@@ -93,6 +93,58 @@ export const getPeriodDateRange = (
   return { start, end };
 };
 
+// Función para calcular el rango de fechas de un periodo basado en dayOfMonth
+export const calculatePeriodDateRange = (
+  year: number,
+  month: number, // 1-12
+  dayOfMonth: number
+): { start: Date; end: Date } => {
+  // Fecha de inicio: día de corte del mes actual
+  const start = new Date(year, month - 1, dayOfMonth, 0, 0, 0);
+  
+  // Fecha de fin: día de corte del siguiente mes - 1 segundo
+  let endYear = year;
+  let endMonth = month + 1;
+  
+  if (endMonth > 12) {
+    endMonth = 1;
+    endYear = year + 1;
+  }
+  
+  const end = new Date(endYear, endMonth - 1, dayOfMonth, 23, 59, 59);
+  end.setSeconds(end.getSeconds() - 1);
+  
+  return { start, end };
+};
+
+// Función para encontrar el periodo actual basado en una fecha
+export const findCurrentPeriod = async (
+  userId: string,
+  date: Date,
+  dayOfMonth: number
+): Promise<MonthlyLiquidityState | null> => {
+  const liquidityRef = firestore.collection('monthlyLiquidity');
+  const dateTimestamp = firebase.firestore.Timestamp.fromDate(date);
+  
+  // Buscar periodos donde la fecha esté entre startDate y endDate
+  const querySnapshot = await liquidityRef
+    .where('userId', '==', userId)
+    .where('startDate', '<=', dateTimestamp)
+    .where('endDate', '>=', dateTimestamp)
+    .limit(1)
+    .get();
+  
+  if (querySnapshot.empty) {
+    return null;
+  }
+  
+  const doc = querySnapshot.docs[0];
+  return {
+    id: doc.id,
+    ...doc.data(),
+  } as MonthlyLiquidityState;
+};
+
 export const myMonthService = {
   // ========== Transactions ==========
   async getTransactions(
@@ -177,24 +229,69 @@ export const myMonthService = {
     } as MonthlyLiquidityState;
   },
 
+  // Buscar periodo por fecha actual
+  async getMonthlyLiquidityByDate(
+    userId: string,
+    date: Date,
+    dayOfMonth: number
+  ): Promise<MonthlyLiquidityState | null> {
+    return findCurrentPeriod(userId, date, dayOfMonth);
+  },
+
   async createOrUpdateMonthlyLiquidity(
     userId: string,
     monthPeriod: string,
     expectedAmount: number,
     realAmount: number | null,
-    liquiditySources?: LiquiditySource[]
+    liquiditySources?: LiquiditySource[],
+    startDate?: Date,
+    endDate?: Date,
+    dayOfMonth?: number
   ): Promise<MonthlyLiquidityState> {
     const liquidityRef = firestore.collection('monthlyLiquidity');
-    const querySnapshot = await liquidityRef
+    
+    // Si no se proporcionan fechas, calcularlas
+    let finalStartDate: Date;
+    let finalEndDate: Date;
+    
+    if (startDate && endDate) {
+      finalStartDate = startDate;
+      finalEndDate = endDate;
+    } else if (dayOfMonth) {
+      const [year, month] = monthPeriod.split('-').map(Number);
+      const range = calculatePeriodDateRange(year, month, dayOfMonth);
+      finalStartDate = range.start;
+      finalEndDate = range.end;
+    } else {
+      // Fallback: usar el mes actual
+      const [year, month] = monthPeriod.split('-').map(Number);
+      finalStartDate = new Date(year, month - 1, 1);
+      finalEndDate = new Date(year, month, 0, 23, 59, 59);
+    }
+
+    // Buscar por fechas primero (más preciso)
+    const dateQuery = await liquidityRef
       .where('userId', '==', userId)
-      .where('monthPeriod', '==', monthPeriod)
+      .where('startDate', '==', firebase.firestore.Timestamp.fromDate(finalStartDate))
       .limit(1)
       .get();
+
+    // Si no se encuentra por fecha, buscar por monthPeriod (compatibilidad)
+    let querySnapshot = dateQuery;
+    if (querySnapshot.empty) {
+      querySnapshot = await liquidityRef
+        .where('userId', '==', userId)
+        .where('monthPeriod', '==', monthPeriod)
+        .limit(1)
+        .get();
+    }
 
     const now = firebase.firestore.Timestamp.now();
     const data: any = {
       userId,
       monthPeriod,
+      startDate: firebase.firestore.Timestamp.fromDate(finalStartDate),
+      endDate: firebase.firestore.Timestamp.fromDate(finalEndDate),
       expectedAmount,
       realAmount,
       updatedAt: now,

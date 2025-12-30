@@ -3,11 +3,7 @@ import {
   myMonthService,
   getPreviousMonthPeriod,
 } from '@/services/Firebase/my-month-service';
-import type {
-  Transaction,
-  MonthlyLiquidityState,
-  LiquiditySource,
-} from './my-month-models';
+import type { Transaction, LiquiditySource } from './my-month-models';
 
 // ========== Transactions ==========
 export const loadTransactions = createAsyncThunk(
@@ -30,9 +26,11 @@ export const loadTransactions = createAsyncThunk(
       );
       console.log('transactions cargadas:', transactions);
       return transactions;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error en loadTransactions:', error);
-      return rejectWithValue(error.message || 'Error al cargar transacciones');
+      return rejectWithValue(
+        (error as Error).message || 'Error al cargar transacciones'
+      );
     }
   }
 );
@@ -63,9 +61,11 @@ export const createTransaction = createAsyncThunk(
       );
       console.log('transacción creada:', result);
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error en createTransaction:', error);
-      return rejectWithValue(error.message || 'Error al crear transacción');
+      return rejectWithValue(
+        (error as Error).message || 'Error al crear transacción'
+      );
     }
   }
 );
@@ -86,9 +86,9 @@ export const updateTransaction = createAsyncThunk(
   ) => {
     try {
       return await myMonthService.updateTransaction(transactionId, transaction);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al actualizar transacción'
+        (error as Error).message || 'Error al actualizar transacción'
       );
     }
   }
@@ -100,8 +100,10 @@ export const deleteTransaction = createAsyncThunk(
     try {
       await myMonthService.deleteTransaction(transactionId);
       return transactionId;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Error al eliminar transacción');
+    } catch (error: unknown) {
+      return rejectWithValue(
+        (error as Error).message || 'Error al eliminar transacción'
+      );
     }
   }
 );
@@ -113,9 +115,11 @@ export const loadMonthlyLiquidity = createAsyncThunk(
     {
       userId,
       monthPeriod,
+      dayOfMonth,
     }: {
       userId: string;
       monthPeriod: string;
+      dayOfMonth?: number;
     },
     { rejectWithValue }
   ) => {
@@ -133,68 +137,39 @@ export const loadMonthlyLiquidity = createAsyncThunk(
           previousPeriod
         );
 
-        // Crear fuente por defecto "Neto" solo con valor esperado (del mes anterior)
-        const defaultSource: LiquiditySource = {
+        // Crear sin fuentes, el usuario las agregará
+        liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
           userId,
-          name: 'Neto',
-          expectedAmount: previousBalance,
-          realAmount: null, // No hay valor real hasta que el usuario lo ingrese
-        };
+          monthPeriod,
+          previousBalance,
+          null,
+          [],
+          undefined,
+          undefined,
+          dayOfMonth
+        );
+      } else if (
+        !liquidity.liquiditySources ||
+        liquidity.liquiditySources.length === 0
+      ) {
+        // Si existe pero no tiene fuentes, mantener el expectedAmount del mes anterior
+        // No crear fuente "Neto", el usuario agregará sus propias fuentes
+        const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+        const previousBalance = await myMonthService.calculateMonthBalance(
+          userId,
+          previousPeriod
+        );
 
         liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
           userId,
           monthPeriod,
           previousBalance,
           null,
-          [defaultSource]
+          [],
+          undefined,
+          undefined,
+          dayOfMonth
         );
-      } else if (
-        !liquidity.liquiditySources ||
-        liquidity.liquiditySources.length === 0
-      ) {
-        // Si existe pero no tiene fuentes, verificar si tiene valores reales
-        // Si tiene valores reales, no usar el mes anterior, usar los valores que el usuario ingresó
-        const hasRealAmount = liquidity.realAmount !== null;
-
-        if (!hasRealAmount) {
-          // Solo si no hay valor real, usar el mes anterior como esperado
-          const previousPeriod = getPreviousMonthPeriod(monthPeriod);
-          const previousBalance = await myMonthService.calculateMonthBalance(
-            userId,
-            previousPeriod
-          );
-
-          const defaultSource: LiquiditySource = {
-            userId,
-            name: 'Neto',
-            expectedAmount: previousBalance,
-            realAmount: null,
-          };
-
-          liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
-            userId,
-            monthPeriod,
-            previousBalance,
-            null,
-            [defaultSource]
-          );
-        } else {
-          // Si ya tiene valor real, crear fuente con los valores que el usuario ingresó
-          const defaultSource: LiquiditySource = {
-            userId,
-            name: 'Neto',
-            expectedAmount: liquidity.expectedAmount,
-            realAmount: liquidity.realAmount,
-          };
-
-          liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
-            userId,
-            monthPeriod,
-            liquidity.expectedAmount,
-            liquidity.realAmount,
-            [defaultSource]
-          );
-        }
       } else {
         // Si ya tiene fuentes, verificar si alguna tiene valor real
         // Si todas las fuentes tienen valor real, no actualizar desde el mes anterior
@@ -224,7 +199,10 @@ export const loadMonthlyLiquidity = createAsyncThunk(
               monthPeriod,
               previousBalance,
               null,
-              updatedSources
+              updatedSources,
+              undefined,
+              undefined,
+              dayOfMonth
             );
           }
         }
@@ -232,10 +210,65 @@ export const loadMonthlyLiquidity = createAsyncThunk(
       }
 
       return liquidity;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error en loadMonthlyLiquidity:', error);
       return rejectWithValue(
-        error.message || 'Error al cargar estado de liquidez'
+        (error as Error).message || 'Error al cargar estado de liquidez'
+      );
+    }
+  }
+);
+
+// Cargar periodo por fecha actual
+export const loadMonthlyLiquidityByDate = createAsyncThunk(
+  'myMonth/loadMonthlyLiquidityByDate',
+  async (
+    {
+      userId,
+      dayOfMonth,
+    }: {
+      userId: string;
+      dayOfMonth: number;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const today = new Date();
+      let liquidity = await myMonthService.getMonthlyLiquidityByDate(
+        userId,
+        today,
+        dayOfMonth
+      );
+
+      // Si no existe, crear uno
+      if (!liquidity) {
+        // Calcular el periodo actual
+        const [year, month] = [today.getFullYear(), today.getMonth() + 1];
+        const monthPeriod = `${year}-${String(month).padStart(2, '0')}`;
+        const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+        const previousBalance = await myMonthService.calculateMonthBalance(
+          userId,
+          previousPeriod
+        );
+
+        liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
+          userId,
+          monthPeriod,
+          previousBalance,
+          null,
+          [],
+          undefined,
+          undefined,
+          dayOfMonth
+        );
+      }
+
+      return liquidity;
+    } catch (error: unknown) {
+      console.error('Error en loadMonthlyLiquidityByDate:', error);
+      return rejectWithValue(
+        (error as Error).message ||
+          'Error al cargar estado de liquidez por fecha'
       );
     }
   }
@@ -277,16 +310,75 @@ export const updateMonthlyLiquidity = createAsyncThunk(
         );
       }
 
+      // Usar el ID existente para actualizar
       return await myMonthService.createOrUpdateMonthlyLiquidity(
         userId,
         monthPeriod,
         liquidity.expectedAmount,
-        realAmount
+        realAmount,
+        liquidity.liquiditySources // Mantener las fuentes existentes
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error en updateMonthlyLiquidity:', error);
       return rejectWithValue(
-        error.message || 'Error al actualizar estado de liquidez'
+        (error as Error).message || 'Error al actualizar estado de liquidez'
+      );
+    }
+  }
+);
+
+export const updateMonthlyLiquidityWithSources = createAsyncThunk(
+  'myMonth/updateMonthlyLiquidityWithSources',
+  async (
+    {
+      userId,
+      monthPeriod,
+      realAmount,
+      liquiditySources,
+    }: {
+      userId: string;
+      monthPeriod: string;
+      realAmount: number | null;
+      liquiditySources: LiquiditySource[];
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const liquidity = await myMonthService.getMonthlyLiquidity(
+        userId,
+        monthPeriod
+      );
+
+      if (!liquidity) {
+        // Si no existe, crear uno
+        const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+        const previousBalance = await myMonthService.calculateMonthBalance(
+          userId,
+          previousPeriod
+        );
+
+        return await myMonthService.createOrUpdateMonthlyLiquidity(
+          userId,
+          monthPeriod,
+          previousBalance,
+          realAmount,
+          liquiditySources
+        );
+      }
+
+      // Usar el ID existente para actualizar
+      return await myMonthService.createOrUpdateMonthlyLiquidity(
+        userId,
+        monthPeriod,
+        liquidity.expectedAmount, // Mantener el expectedAmount calculado
+        realAmount,
+        liquiditySources
+      );
+    } catch (error: unknown) {
+      console.error('Error en updateMonthlyLiquidityWithSources:', error);
+      return rejectWithValue(
+        (error as Error).message ||
+          'Error al actualizar estado de liquidez con fuentes'
       );
     }
   }
@@ -307,9 +399,9 @@ export const loadLiquiditySources = createAsyncThunk(
   ) => {
     try {
       return await myMonthService.getLiquiditySources(userId, monthPeriod);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al cargar fuentes de liquidez'
+        (error as Error).message || 'Error al cargar fuentes de liquidez'
       );
     }
   }
@@ -344,9 +436,9 @@ export const createLiquiditySource = createAsyncThunk(
         monthPeriod
       );
       return { source: newSource, liquidity };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al crear fuente de liquidez'
+        (error as Error).message || 'Error al crear fuente de liquidez'
       );
     }
   }
@@ -383,9 +475,9 @@ export const updateLiquiditySource = createAsyncThunk(
         monthPeriod
       );
       return { source: updatedSource, liquidity };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al actualizar fuente de liquidez'
+        (error as Error).message || 'Error al actualizar fuente de liquidez'
       );
     }
   }
@@ -413,9 +505,9 @@ export const deleteLiquiditySource = createAsyncThunk(
         monthPeriod
       );
       return { sourceId, liquidity };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al eliminar fuente de liquidez'
+        (error as Error).message || 'Error al eliminar fuente de liquidez'
       );
     }
   }

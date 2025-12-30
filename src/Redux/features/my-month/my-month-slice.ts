@@ -5,16 +5,27 @@ import {
   updateTransaction,
   deleteTransaction,
   loadMonthlyLiquidity,
+  loadMonthlyLiquidityByDate,
   updateMonthlyLiquidity,
+  updateMonthlyLiquidityWithSources,
   createLiquiditySource,
   updateLiquiditySource,
   deleteLiquiditySource,
 } from './my-month-thunks';
+import {
+  loadSourcesByPeriod,
+  loadAllSources,
+  createMoneySource,
+  updateMoneySource,
+  deleteMoneySource,
+  loadPreviousMonthSources,
+} from './sources-money-thunks';
 import type { MyMonthState, Transaction } from './my-month-models';
 
 const initialState: MyMonthState = {
   transactions: [],
   monthlyLiquidity: null,
+  moneySources: [],
   loading: false,
   error: null,
   currentMonthPeriod: null,
@@ -93,6 +104,19 @@ const myMonthSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      // Load Monthly Liquidity By Date
+      .addCase(loadMonthlyLiquidityByDate.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadMonthlyLiquidityByDate.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthlyLiquidity = action.payload;
+      })
+      .addCase(loadMonthlyLiquidityByDate.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
       // Update Monthly Liquidity
       .addCase(updateMonthlyLiquidity.pending, (state) => {
         state.loading = true;
@@ -103,6 +127,19 @@ const myMonthSlice = createSlice({
         state.monthlyLiquidity = action.payload;
       })
       .addCase(updateMonthlyLiquidity.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update Monthly Liquidity With Sources
+      .addCase(updateMonthlyLiquidityWithSources.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateMonthlyLiquidityWithSources.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthlyLiquidity = action.payload;
+      })
+      .addCase(updateMonthlyLiquidityWithSources.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
@@ -123,6 +160,37 @@ const myMonthSlice = createSlice({
         if (action.payload.liquidity) {
           state.monthlyLiquidity = action.payload.liquidity;
         }
+      })
+      // Load Sources By Period
+      .addCase(loadSourcesByPeriod.fulfilled, (state, action) => {
+        state.moneySources = action.payload;
+      })
+      // Load All Sources
+      .addCase(loadAllSources.fulfilled, (state, action) => {
+        state.moneySources = action.payload;
+      })
+      // Create Money Source
+      .addCase(createMoneySource.fulfilled, (state, action) => {
+        state.moneySources.push(action.payload);
+      })
+      // Update Money Source
+      .addCase(updateMoneySource.fulfilled, (state, action) => {
+        const index = state.moneySources.findIndex(
+          (s) => s.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.moneySources[index] = action.payload;
+        }
+      })
+      // Delete Money Source
+      .addCase(deleteMoneySource.fulfilled, (state, action) => {
+        state.moneySources = state.moneySources.filter(
+          (s) => s.id !== action.meta.arg
+        );
+      })
+      // Load Previous Month Sources
+      .addCase(loadPreviousMonthSources.fulfilled, (state, action) => {
+        // No actualizar el estado, solo se usa para obtener datos del mes anterior
       });
   },
 });

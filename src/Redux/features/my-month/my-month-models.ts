@@ -40,10 +40,23 @@ export interface LiquiditySource {
 export interface MonthlyLiquidityState {
   id?: string;
   userId: string;
-  monthPeriod: string; // Formato: "YYYY-MM" basado en fecha de corte
+  monthPeriod: string; // Formato: "YYYY-MM" basado en fecha de corte (mantener para compatibilidad)
+  startDate: firebase.firestore.Timestamp; // Fecha de inicio del periodo
+  endDate: firebase.firestore.Timestamp; // Fecha de fin del periodo
   expectedAmount: number; // Valor esperado total (suma de todas las fuentes)
   realAmount: number | null; // Valor real total (suma de todas las fuentes, puede ser null)
-  liquiditySources: LiquiditySource[]; // Fuentes de liquidez
+  liquiditySources: LiquiditySource[]; // Fuentes de liquidez (referencias por ID)
+  createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+}
+
+export interface MoneySource {
+  id?: string;
+  userId: string;
+  name: string;
+  expectedAmount: number; // Valor esperado de esta fuente
+  realAmount: number | null; // Valor real de esta fuente (puede ser null)
+  periodId: string; // ID del periodo al que pertenece
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
@@ -51,6 +64,7 @@ export interface MonthlyLiquidityState {
 export interface MyMonthState {
   transactions: Transaction[];
   monthlyLiquidity: MonthlyLiquidityState | null; // Estado de liquidez del mes actual
+  moneySources: MoneySource[]; // Fuentes de dinero del periodo actual
   loading: boolean;
   error: string | null;
   currentMonthPeriod: string | null; // Periodo del mes actual basado en fecha de corte

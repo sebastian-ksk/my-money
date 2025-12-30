@@ -82,20 +82,17 @@ const MyMonth = () => {
   const totalLiquid = monthlyLiquidity?.expectedAmount ?? 0;
   const totalExpenses = totalFixedPayments + totalRegularExpenses;
 
-  // Calcular valor neto: suma de valores reales de fuentes si no hay valor real directo
+  // Calcular valor neto: suma de valores reales de todas las fuentes
   const liquiditySources = monthlyLiquidity?.liquiditySources || [];
   const totalRealFromSources = liquiditySources.reduce(
     (sum, s) => sum + (s.realAmount ?? 0),
     0
   );
-  const hasDirectRealAmount =
-    monthlyLiquidity?.realAmount !== null &&
-    monthlyLiquidity?.realAmount !== undefined;
-  const displayLiquidity = hasDirectRealAmount
-    ? monthlyLiquidity.realAmount
-    : totalRealFromSources > 0
-    ? totalRealFromSources
-    : monthlyLiquidity?.expectedAmount ?? 0;
+  // El valor neto es siempre la suma de las fuentes
+  const displayLiquidity =
+    totalRealFromSources > 0
+      ? totalRealFromSources
+      : monthlyLiquidity?.expectedAmount ?? 0;
 
   // Cargar datos de configuración si no están disponibles
   useEffect(() => {
@@ -140,6 +137,7 @@ const MyMonth = () => {
         loadMonthlyLiquidity({
           userId: user.uid,
           monthPeriod: currentPeriod,
+          dayOfMonth: userConfig.monthResetDay,
         })
       ).catch((error: unknown) => {
         console.error('Error al cargar estado de liquidez:', error);
