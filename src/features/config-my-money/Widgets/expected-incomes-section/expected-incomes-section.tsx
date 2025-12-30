@@ -62,11 +62,11 @@ export default function ExpectedIncomesSection() {
 
     const user = JSON.parse(userData);
     const numericAmount = parseFloat(formData.amount.replace(/[^\d]/g, '')) || 0;
-    // Si aplica a todos los meses: null (no se incluirá el campo)
+    // Si aplica a todos los meses: undefined (no se incluirá el campo)
     // Si hay meses seleccionados: array con los meses
     // Si no hay meses seleccionados: array vacío []
     const months = formData.appliesToAllMonths
-      ? null
+      ? undefined
       : formData.selectedMonths;
 
     if (editingId) {

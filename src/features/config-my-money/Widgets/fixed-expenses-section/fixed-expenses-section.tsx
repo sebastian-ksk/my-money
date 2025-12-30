@@ -105,11 +105,11 @@ export default function FixedExpensesSection() {
       return;
     }
 
-    // Si aplica a todos los meses: null (no se incluirá el campo)
+    // Si aplica a todos los meses: undefined (no se incluirá el campo)
     // Si hay meses seleccionados: array con los meses
     // Si no hay meses seleccionados: array vacío []
     const months = formData.appliesToAllMonths
-      ? null
+      ? undefined
       : formData.selectedMonths;
 
     try {
