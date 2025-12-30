@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import firebaseApp from 'firebase/app';
 import { Button } from '@/components/ui';
 import MonthTabs from '@/features/my-month/widgets/month-tabs/month-tabs';
+import LiquidityModal from '@/features/my-month/widgets/liquidity-modal/liquidity-modal';
+import ExpenseModal from '@/features/my-month/widgets/expense-modal/expense-modal';
 import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
 import { selectUser } from '@/Redux/features/auth';
 import {
@@ -31,28 +33,16 @@ import {
   updateTransaction,
   deleteTransaction,
   loadMonthlyLiquidity,
-  createLiquiditySource,
-  updateLiquiditySource,
-  deleteLiquiditySource,
 } from '@/Redux/features/my-month/my-month-thunks';
 import {
   calculateMonthPeriod,
   getCurrentDisplayMonth,
 } from '@/services/Firebase/my-month-service';
 import { formatCurrency } from '@/utils/currency';
-import type {
-  Transaction,
-  LiquiditySource,
-  MonthlyLiquidityState,
-} from '@/Redux/features/my-month/my-month-models';
+import type { Transaction } from '@/Redux/features/my-month/my-month-models';
 import { useConfirm } from '@/components/ui';
 
-type ModalType =
-  | 'fixedExpense'
-  | 'income'
-  | 'regularExpense'
-  | 'savings'
-  | null;
+type ModalType = 'expense' | 'income' | 'savings' | null;
 
 const MyMonth = () => {
   const dispatch = useAppDispatch();
@@ -74,6 +64,7 @@ const MyMonth = () => {
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [showModal, setShowModal] = useState<ModalType>(null);
   const [showLiquidityModal, setShowLiquidityModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
   const [formData, setFormData] = useState({
@@ -103,6 +94,21 @@ const MyMonth = () => {
   // Calcular balance: líquido inicial esperado + ingresos reales - gastos (fijos + eventuales)
   const totalLiquid = monthlyLiquidity?.expectedAmount ?? 0;
   const totalExpenses = totalFixedPayments + totalRegularExpenses;
+
+  // Calcular valor neto: suma de valores reales de fuentes si no hay valor real directo
+  const liquiditySources = monthlyLiquidity?.liquiditySources || [];
+  const totalRealFromSources = liquiditySources.reduce(
+    (sum, s) => sum + (s.realAmount ?? 0),
+    0
+  );
+  const hasDirectRealAmount =
+    monthlyLiquidity?.realAmount !== null &&
+    monthlyLiquidity?.realAmount !== undefined;
+  const displayLiquidity = hasDirectRealAmount
+    ? monthlyLiquidity.realAmount
+    : totalRealFromSources > 0
+    ? totalRealFromSources
+    : monthlyLiquidity?.expectedAmount ?? 0;
 
   // Cargar datos de configuración si no están disponibles
   useEffect(() => {
@@ -160,41 +166,6 @@ const MyMonth = () => {
     setIsInitialized(true); // Marcar como inicializado cuando el usuario cambia manualmente
   };
 
-  const handleOpenFixedExpenseModal = (transaction?: Transaction | null) => {
-    if (transaction && !transaction.id) return;
-    // Asegurar que los gastos fijos estén cargados
-    if (user?.uid && fixedExpenses.length === 0) {
-      dispatch(loadFixedExpenses(user.uid));
-    }
-    setEditingTransaction(transaction || null);
-    setShowModal('fixedExpense');
-    if (transaction) {
-      setFormData({
-        fixedExpenseId: transaction.fixedExpenseId || '',
-        expectedAmount: transaction.expectedAmount?.toString() || '',
-        realAmount: transaction.value?.toString() || '',
-        expectedIncomeId: '',
-        value: '',
-        concept: '',
-        paymentMethod: transaction.paymentMethod || 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    } else {
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: '',
-        realAmount: '',
-        expectedIncomeId: '',
-        value: '',
-        concept: '',
-        paymentMethod: 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    }
-  };
-
   const handleOpenIncomeModal = (transaction?: Transaction | null) => {
     // Asegurar que los ingresos esperados estén cargados
     if (user?.uid && expectedIncomes.length === 0) {
@@ -208,36 +179,6 @@ const MyMonth = () => {
         expectedAmount: transaction.expectedAmount?.toString() || '',
         realAmount: transaction.value?.toString() || '',
         expectedIncomeId: transaction.expectedIncomeId || '',
-        value: transaction.value?.toString() || '',
-        concept: transaction.concept || '',
-        paymentMethod: transaction.paymentMethod || 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    } else {
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: '',
-        realAmount: '',
-        expectedIncomeId: '',
-        value: '',
-        concept: '',
-        paymentMethod: 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    }
-  };
-
-  const handleOpenRegularExpenseModal = (transaction?: Transaction | null) => {
-    setEditingTransaction(transaction || null);
-    setShowModal('regularExpense');
-    if (transaction) {
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: '',
-        realAmount: '',
-        expectedIncomeId: '',
         value: transaction.value?.toString() || '',
         concept: transaction.concept || '',
         paymentMethod: transaction.paymentMethod || 'efectivo',
@@ -292,18 +233,6 @@ const MyMonth = () => {
     }
   };
 
-  const handleFixedExpenseChange = (fixedExpenseId: string) => {
-    const fixedExpense = fixedExpenses.find((fe) => fe.id === fixedExpenseId);
-    if (fixedExpense) {
-      setFormData({
-        ...formData,
-        fixedExpenseId,
-        expectedAmount: fixedExpense.amount.toString(),
-        realAmount: fixedExpense.amount.toString(), // Por defecto el mismo valor
-      });
-    }
-  };
-
   const handleExpectedIncomeChange = (expectedIncomeId: string) => {
     const expectedIncome = expectedIncomes.find(
       (ei) => ei.id === expectedIncomeId
@@ -315,76 +244,6 @@ const MyMonth = () => {
         expectedAmount: expectedIncome.amount.toString(),
         realAmount: expectedIncome.amount.toString(), // Por defecto el mismo valor
       });
-    }
-  };
-
-  const handleSubmitFixedExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.uid || !formData.fixedExpenseId) {
-      return;
-    }
-
-    const fixedExpense = fixedExpenses.find(
-      (fe) => fe.id === formData.fixedExpenseId
-    );
-    if (!fixedExpense) {
-      return;
-    }
-
-    try {
-      if (editingTransaction && editingTransaction.id) {
-        // Actualizar transacción existente
-        await dispatch(
-          updateTransaction({
-            transactionId: editingTransaction.id,
-            transaction: {
-              value: parseFloat(formData.realAmount),
-              paymentMethod: formData.paymentMethod,
-            },
-          })
-        ).unwrap();
-      } else {
-        // Crear nueva transacción
-        await dispatch(
-          createTransaction({
-            userId: user.uid,
-            transaction: {
-              type: 'fixed_expense',
-              fixedExpenseId: formData.fixedExpenseId,
-              expectedAmount: parseFloat(formData.expectedAmount),
-              value: parseFloat(formData.realAmount),
-              concept: fixedExpense.name,
-              paymentMethod: formData.paymentMethod,
-              date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-              monthPeriod: currentPeriod,
-            },
-          })
-        ).unwrap();
-      }
-
-      // Recargar transacciones
-      await dispatch(
-        loadTransactions({
-          userId: user.uid,
-          monthPeriod: currentPeriod,
-        })
-      ).unwrap();
-
-      setShowModal(null);
-      setEditingTransaction(null);
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: '',
-        realAmount: '',
-        expectedIncomeId: '',
-        value: '',
-        concept: '',
-        paymentMethod: 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    } catch (error) {
-      console.error('Error al guardar pago fijo:', error);
     }
   };
 
@@ -506,63 +365,6 @@ const MyMonth = () => {
       } catch (error) {
         console.error('Error al guardar ingreso inesperado:', error);
       }
-    }
-  };
-
-  const handleSubmitRegularExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.uid || !formData.concept) return;
-
-    try {
-      if (editingTransaction?.id) {
-        await dispatch(
-          updateTransaction({
-            transactionId: editingTransaction.id,
-            transaction: {
-              value: parseFloat(formData.value),
-              concept: formData.concept,
-              paymentMethod: formData.paymentMethod,
-            },
-          })
-        ).unwrap();
-      } else {
-        await dispatch(
-          createTransaction({
-            userId: user.uid,
-            transaction: {
-              type: 'regular_expense',
-              value: parseFloat(formData.value),
-              concept: formData.concept,
-              paymentMethod: formData.paymentMethod,
-              date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-              monthPeriod: currentPeriod,
-            },
-          })
-        ).unwrap();
-      }
-
-      await dispatch(
-        loadTransactions({
-          userId: user.uid,
-          monthPeriod: currentPeriod,
-        })
-      ).unwrap();
-
-      setShowModal(null);
-      setEditingTransaction(null);
-      setFormData({
-        fixedExpenseId: '',
-        expectedAmount: '',
-        realAmount: '',
-        expectedIncomeId: '',
-        value: '',
-        concept: '',
-        paymentMethod: 'efectivo',
-        savingsSourceId: '',
-        newSavingsSourceName: '',
-      });
-    } catch (error) {
-      console.error('Error al guardar gasto:', error);
     }
   };
 
@@ -688,17 +490,19 @@ const MyMonth = () => {
     }
   };
 
-  const handleEditTransaction = (transaction: any) => {
+  const handleEditTransaction = (transaction: Transaction) => {
     if (!transaction?.id) return;
-    if (transaction.type === 'fixed_expense') {
-      handleOpenFixedExpenseModal(transaction);
+    if (
+      transaction.type === 'fixed_expense' ||
+      transaction.type === 'regular_expense'
+    ) {
+      setEditingTransaction(transaction);
+      setShowExpenseModal(true);
     } else if (
       transaction.type === 'expected_income' ||
       transaction.type === 'unexpected_income'
     ) {
       handleOpenIncomeModal(transaction);
-    } else if (transaction.type === 'regular_expense') {
-      handleOpenRegularExpenseModal(transaction);
     } else if (transaction.type === 'savings') {
       handleOpenSavingsModal(transaction);
     }
@@ -848,11 +652,8 @@ const MyMonth = () => {
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-3 text-sm'>
                 <div className='text-zinc-600'>
-                  <span className='font-medium'>Líquido Inicial Esperado:</span>{' '}
-                  {formatCurrency(
-                    monthlyLiquidity?.expectedAmount ?? 0,
-                    currency
-                  )}
+                  <span className='font-medium'>El mes pasado te quedó:</span>{' '}
+                  {formatCurrency(displayLiquidity ?? 0, currency)}
                 </div>
               </div>
               <Button
@@ -883,53 +684,17 @@ const MyMonth = () => {
           {/* Action Buttons */}
           <div className='flex flex-wrap gap-3 mb-6'>
             <Button
-              onClick={() => handleOpenFixedExpenseModal()}
+              onClick={() => {
+                // Asegurar que los gastos fijos estén cargados
+                if (user?.uid && fixedExpenses.length === 0) {
+                  dispatch(loadFixedExpenses(user.uid));
+                }
+                setEditingTransaction(null);
+                setShowExpenseModal(true);
+              }}
               variant='secondary'
               size='md'
-              icon={
-                <svg
-                  className='w-5 h-5'
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M12 4v16m8-8H4'
-                  />
-                </svg>
-              }
-            >
-              Agregar Pago Fijo
-            </Button>
-            <Button
-              onClick={() => handleOpenIncomeModal()}
-              variant='secondary'
-              size='md'
-              icon={
-                <svg
-                  className='w-5 h-5'
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M12 4v16m8-8H4'
-                  />
-                </svg>
-              }
-            >
-              Agregar Ingreso
-            </Button>
-            <Button
-              onClick={() => handleOpenRegularExpenseModal()}
-              variant='secondary'
-              size='md'
+              className='flex-1 min-w-[150px]'
               icon={
                 <svg
                   className='w-5 h-5'
@@ -949,9 +714,33 @@ const MyMonth = () => {
               Agregar Gasto
             </Button>
             <Button
+              onClick={() => handleOpenIncomeModal()}
+              variant='secondary'
+              size='md'
+              className='flex-1 min-w-[150px]'
+              icon={
+                <svg
+                  className='w-5 h-5'
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M12 4v16m8-8H4'
+                  />
+                </svg>
+              }
+            >
+              Agregar Ingreso
+            </Button>
+            <Button
               onClick={() => handleOpenSavingsModal()}
               variant='secondary'
               size='md'
+              className='flex-1 min-w-[150px]'
               icon={
                 <svg
                   className='w-5 h-5'
@@ -1077,9 +866,17 @@ const MyMonth = () => {
                               {!isPending && transaction.id ? (
                                 <div className='flex justify-center items-center gap-1 sm:gap-2'>
                                   <Button
-                                    onClick={() =>
-                                      handleEditTransaction(transaction)
-                                    }
+                                    onClick={() => {
+                                      // Solo editar si es una transacción real (no pendiente)
+                                      if (
+                                        transaction.id &&
+                                        !transaction.id.startsWith('pending-')
+                                      ) {
+                                        handleEditTransaction(
+                                          transaction as Transaction
+                                        );
+                                      }
+                                    }}
                                     variant='ghost'
                                     size='sm'
                                     icon={
@@ -1142,124 +939,6 @@ const MyMonth = () => {
         </MonthTabs>
       </div>
 
-      {/* Modal para Pago Fijo */}
-      {showModal === 'fixedExpense' && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
-            <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
-              {editingTransaction ? 'Editar Pago Fijo' : 'Agregar Pago Fijo'}
-            </h3>
-            <form onSubmit={handleSubmitFixedExpense}>
-              <div className='mb-4'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Gasto Fijo *
-                </label>
-                <select
-                  required
-                  value={formData.fixedExpenseId}
-                  onChange={(e) => handleFixedExpenseChange(e.target.value)}
-                  disabled={!!editingTransaction}
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white disabled:bg-zinc-100 disabled:text-zinc-600'
-                  aria-label='Gasto Fijo'
-                >
-                  <option value=''>Seleccione un gasto fijo</option>
-                  {fixedExpenses.length === 0 ? (
-                    <option value='' disabled>
-                      No hay gastos fijos configurados. Configúralos primero.
-                    </option>
-                  ) : (
-                    fixedExpenses.map((fe) => (
-                      <option key={fe.id} value={fe.id}>
-                        {fe.name} - {formatCurrency(fe.amount, currency)}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              {formData.fixedExpenseId && (
-                <>
-                  <div className='mb-4'>
-                    <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                      Valor Esperado
-                    </label>
-                    <input
-                      type='number'
-                      step='0.01'
-                      required
-                      value={formData.expectedAmount}
-                      readOnly
-                      className='w-full px-4 py-2 border border-zinc-200 rounded-lg bg-zinc-100 text-zinc-600'
-                    />
-                  </div>
-
-                  <div className='mb-4'>
-                    <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                      Valor Real *
-                    </label>
-                    <input
-                      type='number'
-                      step='0.01'
-                      required
-                      value={formData.realAmount}
-                      onChange={(e) =>
-                        setFormData({ ...formData, realAmount: e.target.value })
-                      }
-                      className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                      placeholder='0.00'
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className='mb-6'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Medio de Pago *
-                </label>
-                <select
-                  required
-                  value={formData.paymentMethod}
-                  onChange={(e) =>
-                    setFormData({ ...formData, paymentMethod: e.target.value })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  aria-label='Medio de pago'
-                >
-                  <option value='efectivo'>Efectivo</option>
-                  <option value='tarjeta_debito'>Tarjeta Débito</option>
-                  <option value='tarjeta_credito'>Tarjeta Crédito</option>
-                  <option value='transferencia'>Transferencia</option>
-                  <option value='nequi'>Nequi</option>
-                  <option value='daviplata'>Daviplata</option>
-                  <option value='otro'>Otro</option>
-                </select>
-              </div>
-
-              <div className='flex gap-3'>
-                <Button
-                  type='button'
-                  onClick={() => setShowModal(null)}
-                  variant='outline'
-                  size='md'
-                  className='flex-1'
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type='submit'
-                  variant='secondary'
-                  size='md'
-                  className='flex-1'
-                  disabled={!formData.fixedExpenseId}
-                >
-                  Guardar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Modal para Ingreso */}
       {showModal === 'income' && (
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
@@ -1317,6 +996,7 @@ const MyMonth = () => {
                       value={formData.expectedAmount}
                       readOnly
                       className='w-full px-4 py-2 border border-zinc-200 rounded-lg bg-zinc-100 text-zinc-600'
+                      aria-label='Valor esperado'
                     />
                   </div>
 
@@ -1552,94 +1232,6 @@ const MyMonth = () => {
         </div>
       )}
 
-      {/* Modal para Gasto Regular */}
-      {showModal === 'regularExpense' && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto'>
-            <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
-              Crear Nuevo Gasto
-            </h3>
-            <form onSubmit={handleSubmitRegularExpense}>
-              <div className='mb-4'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Valor *
-                </label>
-                <input
-                  type='number'
-                  step='0.01'
-                  required
-                  value={formData.value}
-                  onChange={(e) =>
-                    setFormData({ ...formData, value: e.target.value })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder='0.00'
-                />
-              </div>
-
-              <div className='mb-4'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Concepto *
-                </label>
-                <input
-                  type='text'
-                  required
-                  value={formData.concept}
-                  onChange={(e) =>
-                    setFormData({ ...formData, concept: e.target.value })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  placeholder='Descripción del gasto'
-                />
-              </div>
-
-              <div className='mb-6'>
-                <label className='block text-sm font-medium mb-2 text-primary-medium'>
-                  Medio de Pago *
-                </label>
-                <select
-                  required
-                  value={formData.paymentMethod}
-                  onChange={(e) =>
-                    setFormData({ ...formData, paymentMethod: e.target.value })
-                  }
-                  className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-                  aria-label='Medio de pago'
-                >
-                  <option value='efectivo'>Efectivo</option>
-                  <option value='tarjeta_debito'>Tarjeta Débito</option>
-                  <option value='tarjeta_credito'>Tarjeta Crédito</option>
-                  <option value='transferencia'>Transferencia</option>
-                  <option value='nequi'>Nequi</option>
-                  <option value='daviplata'>Daviplata</option>
-                  <option value='otro'>Otro</option>
-                </select>
-              </div>
-
-              <div className='flex gap-3'>
-                <Button
-                  type='button'
-                  onClick={() => setShowModal(null)}
-                  variant='outline'
-                  size='md'
-                  className='flex-1'
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type='submit'
-                  variant='secondary'
-                  size='md'
-                  className='flex-1'
-                >
-                  Guardar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Modal para Líquido Inicial */}
       {showLiquidityModal && (
         <LiquidityModal
@@ -1659,381 +1251,35 @@ const MyMonth = () => {
           }}
         />
       )}
-    </div>
-  );
-};
 
-// Componente Modal de Liquidez
-const LiquidityModal = ({
-  userId,
-  monthPeriod,
-  monthlyLiquidity,
-  currency,
-  onClose,
-  onSave,
-}: {
-  userId: string;
-  monthPeriod: string;
-  monthlyLiquidity: MonthlyLiquidityState | null;
-  currency: string;
-  onClose: () => void;
-  onSave: () => void;
-}) => {
-  const dispatch = useAppDispatch();
-  const confirm = useConfirm();
-  const sources = monthlyLiquidity?.liquiditySources || [];
-  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
-  const [editingSource, setEditingSource] = useState<LiquiditySource | null>(
-    null
-  );
-  const [newSourceName, setNewSourceName] = useState('');
-  const [newSourceExpected, setNewSourceExpected] = useState('');
-  const [newSourceReal, setNewSourceReal] = useState('');
-
-  const handleAddSource = async () => {
-    if (!newSourceName || !newSourceExpected) return;
-
-    try {
-      await dispatch(
-        createLiquiditySource({
-          userId,
-          monthPeriod,
-          source: {
-            name: newSourceName,
-            expectedAmount: parseFloat(newSourceExpected),
-            realAmount: newSourceReal ? parseFloat(newSourceReal) : null,
-          },
-        })
-      ).unwrap();
-      setNewSourceName('');
-      setNewSourceExpected('');
-      setNewSourceReal('');
-      await onSave();
-    } catch (error) {
-      console.error('Error al agregar fuente:', error);
-    }
-  };
-
-  const handleUpdateSource = async (
-    sourceId: string,
-    updates: {
-      name?: string;
-      expectedAmount?: number;
-      realAmount?: number | null;
-    }
-  ) => {
-    try {
-      await dispatch(
-        updateLiquiditySource({
-          userId,
-          monthPeriod,
-          sourceId,
-          source: updates,
-        })
-      ).unwrap();
-      setEditingSourceId(null);
-      await onSave();
-    } catch (error) {
-      console.error('Error al actualizar fuente:', error);
-    }
-  };
-
-  const handleDeleteSource = async (sourceId: string) => {
-    const confirmed = await confirm.showConfirm({
-      title: 'Eliminar Fuente',
-      message: '¿Está seguro de eliminar esta fuente de liquidez?',
-      confirmText: 'Eliminar',
-      cancelText: 'Cancelar',
-      variant: 'danger',
-    });
-    if (!confirmed) return;
-
-    try {
-      await dispatch(
-        deleteLiquiditySource({
-          userId,
-          monthPeriod,
-          sourceId,
-        })
-      ).unwrap();
-      await onSave();
-    } catch (error) {
-      console.error('Error al eliminar fuente:', error);
-    }
-  };
-
-  const totalExpected = sources.reduce(
-    (sum: number, s: LiquiditySource) => sum + s.expectedAmount,
-    0
-  );
-  const totalReal = sources.reduce(
-    (sum: number, s: LiquiditySource) => sum + (s.realAmount ?? 0),
-    0
-  );
-
-  return (
-    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-      <div className='bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto'>
-        <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
-          Líquido del Mes Anterior
-        </h3>
-
-        {/* Resumen */}
-        <div className='mb-6 p-4 bg-zinc-50 rounded-lg'>
-          <div className='flex justify-between items-center mb-2'>
-            <span className='font-medium text-zinc-700'>Total Esperado:</span>
-            <span className='text-lg font-semibold text-zinc-800'>
-              {formatCurrency(totalExpected, currency)}
-            </span>
-          </div>
-          <div className='flex justify-between items-center'>
-            <span className='font-medium text-zinc-700'>Total Real:</span>
-            <span className='text-lg font-semibold text-green-600'>
-              {formatCurrency(totalReal, currency)}
-            </span>
-          </div>
-        </div>
-
-        {/* Lista de Fuentes */}
-        <div className='mb-6'>
-          <h4 className='text-lg font-semibold mb-3 text-primary-dark'>
-            Fuentes de Liquidez
-          </h4>
-          <div className='space-y-3'>
-            {sources.map((source: LiquiditySource, index: number) => (
-              <div
-                key={source.id || `source-${index}`}
-                className='p-4 border border-zinc-200 rounded-lg'
-              >
-                {editingSourceId === source.id && editingSource ? (
-                  <div className='space-y-3'>
-                    <input
-                      type='text'
-                      value={editingSource.name}
-                      onChange={(e) =>
-                        setEditingSource({
-                          ...editingSource,
-                          name: e.target.value,
-                        })
-                      }
-                      className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
-                      placeholder='Nombre de la fuente'
-                      aria-label='Nombre de la fuente'
-                    />
-                    <div className='grid grid-cols-2 gap-3'>
-                      <div>
-                        <label className='block text-sm font-medium mb-1'>
-                          Esperado
-                        </label>
-                        <input
-                          type='number'
-                          step='0.01'
-                          value={editingSource.expectedAmount}
-                          onChange={(e) =>
-                            setEditingSource({
-                              ...editingSource,
-                              expectedAmount: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
-                          aria-label='Valor esperado'
-                        />
-                      </div>
-                      <div>
-                        <label className='block text-sm font-medium mb-1'>
-                          Real
-                        </label>
-                        <input
-                          type='number'
-                          step='0.01'
-                          value={editingSource.realAmount ?? ''}
-                          onChange={(e) =>
-                            setEditingSource({
-                              ...editingSource,
-                              realAmount: e.target.value
-                                ? parseFloat(e.target.value)
-                                : null,
-                            })
-                          }
-                          className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
-                          placeholder='Opcional'
-                          aria-label='Valor real'
-                        />
-                      </div>
-                    </div>
-                    <div className='flex gap-2'>
-                      <Button
-                        onClick={() => {
-                          if (editingSource.id) {
-                            handleUpdateSource(editingSource.id, {
-                              name: editingSource.name,
-                              expectedAmount: editingSource.expectedAmount,
-                              realAmount: editingSource.realAmount,
-                            });
-                          }
-                        }}
-                        variant='secondary'
-                        size='sm'
-                      >
-                        Guardar
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setEditingSourceId(null);
-                          setEditingSource(null);
-                        }}
-                        variant='outline'
-                        size='sm'
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className='flex justify-between items-center'>
-                    <div className='flex-1'>
-                      <div className='font-medium text-zinc-800'>
-                        {source.name}
-                      </div>
-                      <div className='text-sm text-zinc-600 mt-1'>
-                        Esperado:{' '}
-                        {formatCurrency(source.expectedAmount, currency)}
-                        {source.realAmount !== null && (
-                          <>
-                            {' '}
-                            | Real:{' '}
-                            {formatCurrency(source.realAmount, currency)}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className='flex gap-2'>
-                      <Button
-                        onClick={() => {
-                          if (source.id) {
-                            setEditingSourceId(source.id);
-                            setEditingSource({ ...source });
-                          }
-                        }}
-                        variant='ghost'
-                        size='sm'
-                        icon={
-                          <svg
-                            className='w-4 h-4'
-                            fill='none'
-                            stroke='currentColor'
-                            viewBox='0 0 24 24'
-                          >
-                            <path
-                              strokeLinecap='round'
-                              strokeLinejoin='round'
-                              strokeWidth={2}
-                              d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
-                            />
-                          </svg>
-                        }
-                        iconOnly
-                      />
-                      {sources.length > 1 && source.id && (
-                        <Button
-                          onClick={() => {
-                            if (source.id) {
-                              handleDeleteSource(source.id);
-                            }
-                          }}
-                          variant='ghost'
-                          size='sm'
-                          icon={
-                            <svg
-                              className='w-4 h-4'
-                              fill='none'
-                              stroke='currentColor'
-                              viewBox='0 0 24 24'
-                            >
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                strokeWidth={2}
-                                d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
-                              />
-                            </svg>
-                          }
-                          iconOnly
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Agregar Nueva Fuente */}
-        <div className='mb-6 p-4 border border-zinc-200 rounded-lg bg-zinc-50'>
-          <h4 className='text-md font-semibold mb-3 text-primary-dark'>
-            Agregar Nueva Fuente
-          </h4>
-          <div className='space-y-3'>
-            <input
-              type='text'
-              value={newSourceName}
-              onChange={(e) => setNewSourceName(e.target.value)}
-              className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
-              placeholder='Nombre de la fuente (ej: Efectivo, Banco, etc.)'
-              aria-label='Nombre de la nueva fuente'
-            />
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label className='block text-sm font-medium mb-1'>
-                  Valor Esperado *
-                </label>
-                <input
-                  type='number'
-                  step='0.01'
-                  value={newSourceExpected}
-                  onChange={(e) => setNewSourceExpected(e.target.value)}
-                  className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
-                  placeholder='0.00'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium mb-1'>
-                  Valor Real
-                </label>
-                <input
-                  type='number'
-                  step='0.01'
-                  value={newSourceReal}
-                  onChange={(e) => setNewSourceReal(e.target.value)}
-                  className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
-                  placeholder='Opcional'
-                />
-              </div>
-            </div>
-            <Button
-              onClick={handleAddSource}
-              variant='secondary'
-              size='md'
-              disabled={!newSourceName || !newSourceExpected}
-            >
-              Agregar Fuente
-            </Button>
-          </div>
-        </div>
-
-        <div className='flex gap-3'>
-          <Button
-            type='button'
-            onClick={onClose}
-            variant='outline'
-            size='md'
-            className='flex-1'
-          >
-            Cerrar
-          </Button>
-        </div>
-      </div>
+      {/* Modal para Gasto (Fijo u Ocasional) */}
+      {showExpenseModal && (
+        <ExpenseModal
+          userId={user?.uid || ''}
+          monthPeriod={currentPeriod}
+          fixedExpenses={fixedExpenses}
+          currency={currency}
+          editingTransaction={editingTransaction}
+          onClose={() => {
+            setShowExpenseModal(false);
+            setEditingTransaction(null);
+          }}
+          onSave={async () => {
+            // Asegurar que los gastos fijos estén cargados
+            if (user?.uid && fixedExpenses.length === 0) {
+              await dispatch(loadFixedExpenses(user.uid));
+            }
+            await dispatch(
+              loadTransactions({
+                userId: user?.uid || '',
+                monthPeriod: currentPeriod,
+              })
+            ).unwrap();
+            setShowExpenseModal(false);
+            setEditingTransaction(null);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -133,12 +133,12 @@ export const loadMonthlyLiquidity = createAsyncThunk(
           previousPeriod
         );
 
-        // Crear fuente por defecto "Neto"
+        // Crear fuente por defecto "Neto" solo con valor esperado (del mes anterior)
         const defaultSource: LiquiditySource = {
           userId,
           name: 'Neto',
           expectedAmount: previousBalance,
-          realAmount: null,
+          realAmount: null, // No hay valor real hasta que el usuario lo ingrese
         };
 
         liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
@@ -152,21 +152,83 @@ export const loadMonthlyLiquidity = createAsyncThunk(
         !liquidity.liquiditySources ||
         liquidity.liquiditySources.length === 0
       ) {
-        // Si existe pero no tiene fuentes, crear una por defecto
-        const defaultSource: LiquiditySource = {
-          userId,
-          name: 'Neto',
-          expectedAmount: liquidity.expectedAmount,
-          realAmount: liquidity.realAmount,
-        };
+        // Si existe pero no tiene fuentes, verificar si tiene valores reales
+        // Si tiene valores reales, no usar el mes anterior, usar los valores que el usuario ingresó
+        const hasRealAmount = liquidity.realAmount !== null;
 
-        liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
-          userId,
-          monthPeriod,
-          liquidity.expectedAmount,
-          liquidity.realAmount,
-          [defaultSource]
+        if (!hasRealAmount) {
+          // Solo si no hay valor real, usar el mes anterior como esperado
+          const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+          const previousBalance = await myMonthService.calculateMonthBalance(
+            userId,
+            previousPeriod
+          );
+
+          const defaultSource: LiquiditySource = {
+            userId,
+            name: 'Neto',
+            expectedAmount: previousBalance,
+            realAmount: null,
+          };
+
+          liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
+            userId,
+            monthPeriod,
+            previousBalance,
+            null,
+            [defaultSource]
+          );
+        } else {
+          // Si ya tiene valor real, crear fuente con los valores que el usuario ingresó
+          const defaultSource: LiquiditySource = {
+            userId,
+            name: 'Neto',
+            expectedAmount: liquidity.expectedAmount,
+            realAmount: liquidity.realAmount,
+          };
+
+          liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
+            userId,
+            monthPeriod,
+            liquidity.expectedAmount,
+            liquidity.realAmount,
+            [defaultSource]
+          );
+        }
+      } else {
+        // Si ya tiene fuentes, verificar si alguna tiene valor real
+        // Si todas las fuentes tienen valor real, no actualizar desde el mes anterior
+        const hasAnyRealAmount = liquidity.liquiditySources.some(
+          (s) => s.realAmount !== null
         );
+
+        // Si no hay valores reales y el expectedAmount coincide con el mes anterior, actualizar
+        if (!hasAnyRealAmount) {
+          const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+          const previousBalance = await myMonthService.calculateMonthBalance(
+            userId,
+            previousPeriod
+          );
+
+          // Solo actualizar si el expectedAmount actual es igual al del mes anterior
+          // (significa que aún no ha sido modificado por el usuario)
+          if (liquidity.expectedAmount === previousBalance) {
+            // Actualizar las fuentes con el nuevo valor del mes anterior
+            const updatedSources = liquidity.liquiditySources.map((s) => ({
+              ...s,
+              expectedAmount: previousBalance,
+            }));
+
+            liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
+              userId,
+              monthPeriod,
+              previousBalance,
+              null,
+              updatedSources
+            );
+          }
+        }
+        // Si hay valores reales, no hacer nada - respetar lo que el usuario ingresó
       }
 
       return liquidity;

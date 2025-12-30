@@ -258,6 +258,15 @@ export const myMonthService = {
     return liquidity?.liquiditySources || [];
   },
 
+  async getPreviousMonthLiquiditySources(
+    userId: string,
+    monthPeriod: string
+  ): Promise<LiquiditySource[]> {
+    const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+    const liquidity = await this.getMonthlyLiquidity(userId, previousPeriod);
+    return liquidity?.liquiditySources || [];
+  },
+
   async createLiquiditySource(
     userId: string,
     monthPeriod: string,
@@ -276,11 +285,11 @@ export const myMonthService = {
     const sources = liquidity?.liquiditySources || [];
     const updatedSources = [...sources, newSource];
 
-    // Calcular totales
-    const expectedAmount = updatedSources.reduce(
-      (sum, s) => sum + s.expectedAmount,
-      0
-    );
+    // El expectedAmount del MonthlyLiquidityState debe ser el valor calculado del mes anterior
+    // No se actualiza aquí, se mantiene el valor existente
+    const currentExpectedAmount = liquidity?.expectedAmount ?? 0;
+    
+    // El realAmount es la suma de los valores reales de las fuentes
     const realAmount = updatedSources.reduce((sum, s) => {
       return sum + (s.realAmount ?? 0);
     }, 0);
@@ -288,7 +297,7 @@ export const myMonthService = {
     await this.createOrUpdateMonthlyLiquidity(
       userId,
       monthPeriod,
-      expectedAmount,
+      currentExpectedAmount,
       realAmount > 0 ? realAmount : null,
       updatedSources
     );
@@ -325,11 +334,11 @@ export const myMonthService = {
     const updatedSources = [...sources];
     updatedSources[sourceIndex] = updatedSource;
 
-    // Calcular totales
-    const expectedAmount = updatedSources.reduce(
-      (sum, s) => sum + s.expectedAmount,
-      0
-    );
+    // El expectedAmount del MonthlyLiquidityState debe ser el valor calculado del mes anterior
+    // No se actualiza aquí, se mantiene el valor existente
+    const currentExpectedAmount = liquidity.expectedAmount;
+    
+    // El realAmount es la suma de los valores reales de las fuentes
     const realAmount = updatedSources.reduce((sum, s) => {
       return sum + (s.realAmount ?? 0);
     }, 0);
@@ -337,7 +346,7 @@ export const myMonthService = {
     await this.createOrUpdateMonthlyLiquidity(
       userId,
       monthPeriod,
-      expectedAmount,
+      currentExpectedAmount,
       realAmount > 0 ? realAmount : null,
       updatedSources
     );
@@ -358,11 +367,11 @@ export const myMonthService = {
     const sources = liquidity.liquiditySources || [];
     const updatedSources = sources.filter((s) => s.id !== sourceId);
 
-    // Calcular totales
-    const expectedAmount = updatedSources.reduce(
-      (sum, s) => sum + s.expectedAmount,
-      0
-    );
+    // El expectedAmount del MonthlyLiquidityState debe ser el valor calculado del mes anterior
+    // No se actualiza aquí, se mantiene el valor existente
+    const currentExpectedAmount = liquidity.expectedAmount;
+    
+    // El realAmount es la suma de los valores reales de las fuentes
     const realAmount = updatedSources.reduce((sum, s) => {
       return sum + (s.realAmount ?? 0);
     }, 0);
@@ -370,7 +379,7 @@ export const myMonthService = {
     await this.createOrUpdateMonthlyLiquidity(
       userId,
       monthPeriod,
-      expectedAmount,
+      currentExpectedAmount,
       realAmount > 0 ? realAmount : null,
       updatedSources
     );
