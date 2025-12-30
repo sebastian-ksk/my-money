@@ -4,6 +4,7 @@ import type {
   Transaction,
   MonthlyLiquidityState,
   LiquiditySource,
+  LiquidSource,
 } from '@/Redux/features/my-month/my-month-models';
 
 // Función auxiliar para calcular el periodo del mes basado en fecha de corte
@@ -507,6 +508,13 @@ export const myMonthService = {
     const liquidity = await this.getMonthlyLiquidity(userId, monthPeriod);
     const now = firebase.firestore.Timestamp.now();
 
+    // Guardar en la colección liquidSources (sin duplicados por nombre)
+    // y obtener el ID de referencia
+    const liquidSource = await this.createOrUpdateLiquidSource(
+      userId,
+      source.name
+    );
+
     // Generar un ID único para la fuente
     const sourceId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -514,6 +522,7 @@ export const myMonthService = {
       id: sourceId,
       userId,
       ...source,
+      liquidSourceId: liquidSource.id, // Referencia al liquidSource
       createdAt: now,
       updatedAt: now,
     };
@@ -586,10 +595,22 @@ export const myMonthService = {
       existingSource.id ||
       `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    // Actualizar en la colección liquidSources si el nombre cambió
+    // y obtener la referencia al liquidSource
+    let liquidSourceId = existingSource.liquidSourceId;
+    if (source.name) {
+      const liquidSource = await this.createOrUpdateLiquidSource(
+        userId,
+        source.name
+      );
+      liquidSourceId = liquidSource.id;
+    }
+
     const updatedSource: LiquiditySource = {
       ...existingSource,
       id: sourceIdToUse,
       ...source,
+      liquidSourceId: liquidSourceId || existingSource.liquidSourceId, // Mantener referencia existente si no hay nombre nuevo
       updatedAt: now,
     };
 
@@ -664,5 +685,112 @@ export const myMonthService = {
       realAmount > 0 ? realAmount : null,
       updatedSources
     );
+  },
+
+  // ========== Liquid Sources (Colección sin duplicados) ==========
+  async getLiquidSource(
+    userId: string,
+    name: string
+  ): Promise<LiquidSource | null> {
+    const liquidSourcesRef = firestore.collection('liquidSources');
+    const normalizedName = name.trim().toLowerCase();
+
+    const querySnapshot = await liquidSourcesRef
+      .where('userId', '==', userId)
+      .where('nameNormalized', '==', normalizedName)
+      .limit(1)
+      .get();
+
+    if (querySnapshot.empty) {
+      return null;
+    }
+
+    const doc = querySnapshot.docs[0];
+    const data = doc.data();
+    // Retornar solo los campos del modelo (sin nameNormalized)
+    return {
+      id: doc.id,
+      userId: data.userId,
+      name: data.name,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    } as LiquidSource;
+  },
+
+  async getAllLiquidSources(userId: string): Promise<LiquidSource[]> {
+    const liquidSourcesRef = firestore.collection('liquidSources');
+    const querySnapshot = await liquidSourcesRef
+      .where('userId', '==', userId)
+      .orderBy('nameNormalized')
+      .get();
+
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      // Retornar solo los campos del modelo (sin nameNormalized)
+      return {
+        id: doc.id,
+        userId: data.userId,
+        name: data.name,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      } as LiquidSource;
+    });
+  },
+
+  async createOrUpdateLiquidSource(
+    userId: string,
+    name: string
+  ): Promise<LiquidSource> {
+    const liquidSourcesRef = firestore.collection('liquidSources');
+    const trimmedName = name.trim();
+    const normalizedName = trimmedName.toLowerCase();
+    const now = firebase.firestore.Timestamp.now();
+
+    // Buscar si ya existe (por nombre normalizado)
+    const existing = await this.getLiquidSource(userId, name);
+
+    if (existing) {
+      // Actualizar si existe (actualizar el nombre por si cambió la capitalización)
+      await liquidSourcesRef.doc(existing.id).update({
+        name: trimmedName,
+        nameNormalized: normalizedName,
+        updatedAt: now,
+      });
+      const doc = await liquidSourcesRef.doc(existing.id).get();
+      const data = doc.data();
+      if (!data) {
+        throw new Error('Liquid source data not found');
+      }
+      return {
+        id: doc.id,
+        userId: data.userId,
+        name: data.name,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      } as LiquidSource;
+    } else {
+      // Crear nuevo
+      const newLiquidSource = {
+        userId,
+        name: trimmedName,
+        nameNormalized: normalizedName, // Campo para búsqueda sin duplicados
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const docRef = await liquidSourcesRef.add(newLiquidSource);
+      const doc = await docRef.get();
+      const data = doc.data();
+      if (!data) {
+        throw new Error('Liquid source data not found');
+      }
+      return {
+        id: doc.id,
+        userId: data.userId,
+        name: data.name,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      } as LiquidSource;
+    }
   },
 };

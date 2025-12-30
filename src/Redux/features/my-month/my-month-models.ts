@@ -31,8 +31,18 @@ export interface LiquiditySource {
   id?: string;
   userId: string;
   name: string;
+  liquidSourceId?: string; // Referencia al ID en la colección liquidSources
   expectedAmount: number; // Valor esperado de esta fuente
   realAmount: number | null; // Valor real de esta fuente (puede ser null)
+  createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+}
+
+// Modelo para la colección liquidSources (sin duplicados por nombre)
+export interface LiquidSource {
+  id?: string;
+  userId: string;
+  name: string; // Nombre único por usuario
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
