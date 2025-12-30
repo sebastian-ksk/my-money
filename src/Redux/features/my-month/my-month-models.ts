@@ -27,12 +27,23 @@ export interface Transaction {
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
 
+export interface LiquiditySource {
+  id?: string;
+  userId: string;
+  name: string;
+  expectedAmount: number; // Valor esperado de esta fuente
+  realAmount: number | null; // Valor real de esta fuente (puede ser null)
+  createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+}
+
 export interface MonthlyLiquidityState {
   id?: string;
   userId: string;
   monthPeriod: string; // Formato: "YYYY-MM" basado en fecha de corte
-  expectedAmount: number; // Valor esperado (resultado del mes anterior)
-  realAmount: number | null; // Valor real (puede ser null si no se ha establecido)
+  expectedAmount: number; // Valor esperado total (suma de todas las fuentes)
+  realAmount: number | null; // Valor real total (suma de todas las fuentes, puede ser null)
+  liquiditySources: LiquiditySource[]; // Fuentes de liquidez
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }

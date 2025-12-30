@@ -31,10 +31,20 @@ import {
   updateTransaction,
   deleteTransaction,
   loadMonthlyLiquidity,
+  createLiquiditySource,
+  updateLiquiditySource,
+  deleteLiquiditySource,
 } from '@/Redux/features/my-month/my-month-thunks';
-import { calculateMonthPeriod } from '@/services/Firebase/my-month-service';
+import {
+  calculateMonthPeriod,
+  getCurrentDisplayMonth,
+} from '@/services/Firebase/my-month-service';
 import { formatCurrency } from '@/utils/currency';
-import type { Transaction } from '@/Redux/features/my-month/my-month-models';
+import type {
+  Transaction,
+  LiquiditySource,
+  MonthlyLiquidityState,
+} from '@/Redux/features/my-month/my-month-models';
 import { useConfirm } from '@/components/ui';
 
 type ModalType =
@@ -63,6 +73,7 @@ const MyMonth = () => {
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [showModal, setShowModal] = useState<ModalType>(null);
+  const [showLiquidityModal, setShowLiquidityModal] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
   const [formData, setFormData] = useState({
@@ -107,6 +118,18 @@ const MyMonth = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, dispatch]);
 
+  // Actualizar mes y año cuando se carga la configuración del usuario
+  // Solo actualizar si aún no se ha cambiado manualmente (primera carga)
+  const [isInitialized, setIsInitialized] = useState(false);
+  useEffect(() => {
+    if (userConfig?.monthResetDay !== undefined && !isInitialized) {
+      const currentDisplay = getCurrentDisplayMonth(userConfig.monthResetDay);
+      setSelectedMonth(currentDisplay.month);
+      setSelectedYear(currentDisplay.year);
+      setIsInitialized(true);
+    }
+  }, [userConfig?.monthResetDay, isInitialized]);
+
   // Cargar datos del mes
   useEffect(() => {
     if (user?.uid && userConfig) {
@@ -134,6 +157,7 @@ const MyMonth = () => {
   const handleMonthChange = (month: number, year: number) => {
     setSelectedMonth(month);
     setSelectedYear(year);
+    setIsInitialized(true); // Marcar como inicializado cuando el usuario cambia manualmente
   };
 
   const handleOpenFixedExpenseModal = (transaction?: Transaction | null) => {
@@ -821,14 +845,38 @@ const MyMonth = () => {
         >
           {/* Balance Section */}
           <div className='mb-6'>
-            <div className='flex items-center gap-3 text-sm'>
-              <div className='text-zinc-600'>
-                <span className='font-medium'>Líquido Inicial Esperado:</span>{' '}
-                {formatCurrency(
-                  monthlyLiquidity?.expectedAmount ?? 0,
-                  currency
-                )}
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-3 text-sm'>
+                <div className='text-zinc-600'>
+                  <span className='font-medium'>Líquido Inicial Esperado:</span>{' '}
+                  {formatCurrency(
+                    monthlyLiquidity?.expectedAmount ?? 0,
+                    currency
+                  )}
+                </div>
               </div>
+              <Button
+                onClick={() => setShowLiquidityModal(true)}
+                variant='secondary'
+                size='sm'
+                icon={
+                  <svg
+                    className='w-4 h-4'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                    />
+                  </svg>
+                }
+              >
+                ¿Cuánto te quedó del mes pasado?
+              </Button>
             </div>
           </div>
 
@@ -900,37 +948,35 @@ const MyMonth = () => {
             >
               Agregar Gasto
             </Button>
+            <Button
+              onClick={() => handleOpenSavingsModal()}
+              variant='secondary'
+              size='md'
+              icon={
+                <svg
+                  className='w-5 h-5'
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                  />
+                </svg>
+              }
+            >
+              Agregar Ahorro
+            </Button>
           </div>
 
           {/* Transactions Table */}
           <div className='mt-6'>
-            <div className='flex justify-between items-center mb-4'>
-              <h3 className='text-lg font-semibold text-primary-dark'>
-                Transacciones del Mes
-              </h3>
-              <Button
-                onClick={() => handleOpenSavingsModal()}
-                variant='secondary'
-                size='md'
-                icon={
-                  <svg
-                    className='w-5 h-5'
-                    fill='none'
-                    stroke='currentColor'
-                    viewBox='0 0 24 24'
-                  >
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-                    />
-                  </svg>
-                }
-              >
-                Agregar Ahorro
-              </Button>
-            </div>
+            <h3 className='text-lg font-semibold text-primary-dark mb-4'>
+              Transacciones del Mes
+            </h3>
             {loading ? (
               <div className='text-center py-12'>
                 <p className='text-zinc-600'>Cargando transacciones...</p>
@@ -1027,9 +1073,9 @@ const MyMonth = () => {
                                 : '-'}
                               {formatCurrency(transaction.value, currency)}
                             </td>
-                            <td className='py-3 px-4'>
-                              {!isPending && transaction.id && (
-                                <div className='flex justify-center gap-1 sm:gap-2'>
+                            <td className='py-3 px-4 text-center w-24'>
+                              {!isPending && transaction.id ? (
+                                <div className='flex justify-center items-center gap-1 sm:gap-2'>
                                   <Button
                                     onClick={() =>
                                       handleEditTransaction(transaction)
@@ -1078,6 +1124,10 @@ const MyMonth = () => {
                                     iconOnly
                                   />
                                 </div>
+                              ) : (
+                                <span className='inline-block w-full'>
+                                  &nbsp;
+                                </span>
                               )}
                             </td>
                           </tr>
@@ -1589,6 +1639,401 @@ const MyMonth = () => {
           </div>
         </div>
       )}
+
+      {/* Modal para Líquido Inicial */}
+      {showLiquidityModal && (
+        <LiquidityModal
+          userId={user?.uid || ''}
+          monthPeriod={currentPeriod}
+          monthlyLiquidity={monthlyLiquidity}
+          currency={currency}
+          onClose={() => setShowLiquidityModal(false)}
+          onSave={async () => {
+            await dispatch(
+              loadMonthlyLiquidity({
+                userId: user?.uid || '',
+                monthPeriod: currentPeriod,
+              })
+            ).unwrap();
+            setShowLiquidityModal(false);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Componente Modal de Liquidez
+const LiquidityModal = ({
+  userId,
+  monthPeriod,
+  monthlyLiquidity,
+  currency,
+  onClose,
+  onSave,
+}: {
+  userId: string;
+  monthPeriod: string;
+  monthlyLiquidity: MonthlyLiquidityState | null;
+  currency: string;
+  onClose: () => void;
+  onSave: () => void;
+}) => {
+  const dispatch = useAppDispatch();
+  const confirm = useConfirm();
+  const sources = monthlyLiquidity?.liquiditySources || [];
+  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [editingSource, setEditingSource] = useState<LiquiditySource | null>(
+    null
+  );
+  const [newSourceName, setNewSourceName] = useState('');
+  const [newSourceExpected, setNewSourceExpected] = useState('');
+  const [newSourceReal, setNewSourceReal] = useState('');
+
+  const handleAddSource = async () => {
+    if (!newSourceName || !newSourceExpected) return;
+
+    try {
+      await dispatch(
+        createLiquiditySource({
+          userId,
+          monthPeriod,
+          source: {
+            name: newSourceName,
+            expectedAmount: parseFloat(newSourceExpected),
+            realAmount: newSourceReal ? parseFloat(newSourceReal) : null,
+          },
+        })
+      ).unwrap();
+      setNewSourceName('');
+      setNewSourceExpected('');
+      setNewSourceReal('');
+      await onSave();
+    } catch (error) {
+      console.error('Error al agregar fuente:', error);
+    }
+  };
+
+  const handleUpdateSource = async (
+    sourceId: string,
+    updates: {
+      name?: string;
+      expectedAmount?: number;
+      realAmount?: number | null;
+    }
+  ) => {
+    try {
+      await dispatch(
+        updateLiquiditySource({
+          userId,
+          monthPeriod,
+          sourceId,
+          source: updates,
+        })
+      ).unwrap();
+      setEditingSourceId(null);
+      await onSave();
+    } catch (error) {
+      console.error('Error al actualizar fuente:', error);
+    }
+  };
+
+  const handleDeleteSource = async (sourceId: string) => {
+    const confirmed = await confirm.showConfirm({
+      title: 'Eliminar Fuente',
+      message: '¿Está seguro de eliminar esta fuente de liquidez?',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      await dispatch(
+        deleteLiquiditySource({
+          userId,
+          monthPeriod,
+          sourceId,
+        })
+      ).unwrap();
+      await onSave();
+    } catch (error) {
+      console.error('Error al eliminar fuente:', error);
+    }
+  };
+
+  const totalExpected = sources.reduce(
+    (sum: number, s: LiquiditySource) => sum + s.expectedAmount,
+    0
+  );
+  const totalReal = sources.reduce(
+    (sum: number, s: LiquiditySource) => sum + (s.realAmount ?? 0),
+    0
+  );
+
+  return (
+    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+      <div className='bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto'>
+        <h3 className='text-2xl font-bold mb-4 text-primary-dark'>
+          Líquido del Mes Anterior
+        </h3>
+
+        {/* Resumen */}
+        <div className='mb-6 p-4 bg-zinc-50 rounded-lg'>
+          <div className='flex justify-between items-center mb-2'>
+            <span className='font-medium text-zinc-700'>Total Esperado:</span>
+            <span className='text-lg font-semibold text-zinc-800'>
+              {formatCurrency(totalExpected, currency)}
+            </span>
+          </div>
+          <div className='flex justify-between items-center'>
+            <span className='font-medium text-zinc-700'>Total Real:</span>
+            <span className='text-lg font-semibold text-green-600'>
+              {formatCurrency(totalReal, currency)}
+            </span>
+          </div>
+        </div>
+
+        {/* Lista de Fuentes */}
+        <div className='mb-6'>
+          <h4 className='text-lg font-semibold mb-3 text-primary-dark'>
+            Fuentes de Liquidez
+          </h4>
+          <div className='space-y-3'>
+            {sources.map((source: LiquiditySource, index: number) => (
+              <div
+                key={source.id || `source-${index}`}
+                className='p-4 border border-zinc-200 rounded-lg'
+              >
+                {editingSourceId === source.id && editingSource ? (
+                  <div className='space-y-3'>
+                    <input
+                      type='text'
+                      value={editingSource.name}
+                      onChange={(e) =>
+                        setEditingSource({
+                          ...editingSource,
+                          name: e.target.value,
+                        })
+                      }
+                      className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
+                      placeholder='Nombre de la fuente'
+                      aria-label='Nombre de la fuente'
+                    />
+                    <div className='grid grid-cols-2 gap-3'>
+                      <div>
+                        <label className='block text-sm font-medium mb-1'>
+                          Esperado
+                        </label>
+                        <input
+                          type='number'
+                          step='0.01'
+                          value={editingSource.expectedAmount}
+                          onChange={(e) =>
+                            setEditingSource({
+                              ...editingSource,
+                              expectedAmount: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
+                          aria-label='Valor esperado'
+                        />
+                      </div>
+                      <div>
+                        <label className='block text-sm font-medium mb-1'>
+                          Real
+                        </label>
+                        <input
+                          type='number'
+                          step='0.01'
+                          value={editingSource.realAmount ?? ''}
+                          onChange={(e) =>
+                            setEditingSource({
+                              ...editingSource,
+                              realAmount: e.target.value
+                                ? parseFloat(e.target.value)
+                                : null,
+                            })
+                          }
+                          className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
+                          placeholder='Opcional'
+                          aria-label='Valor real'
+                        />
+                      </div>
+                    </div>
+                    <div className='flex gap-2'>
+                      <Button
+                        onClick={() => {
+                          if (editingSource.id) {
+                            handleUpdateSource(editingSource.id, {
+                              name: editingSource.name,
+                              expectedAmount: editingSource.expectedAmount,
+                              realAmount: editingSource.realAmount,
+                            });
+                          }
+                        }}
+                        variant='secondary'
+                        size='sm'
+                      >
+                        Guardar
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setEditingSourceId(null);
+                          setEditingSource(null);
+                        }}
+                        variant='outline'
+                        size='sm'
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className='flex justify-between items-center'>
+                    <div className='flex-1'>
+                      <div className='font-medium text-zinc-800'>
+                        {source.name}
+                      </div>
+                      <div className='text-sm text-zinc-600 mt-1'>
+                        Esperado:{' '}
+                        {formatCurrency(source.expectedAmount, currency)}
+                        {source.realAmount !== null && (
+                          <>
+                            {' '}
+                            | Real:{' '}
+                            {formatCurrency(source.realAmount, currency)}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className='flex gap-2'>
+                      <Button
+                        onClick={() => {
+                          if (source.id) {
+                            setEditingSourceId(source.id);
+                            setEditingSource({ ...source });
+                          }
+                        }}
+                        variant='ghost'
+                        size='sm'
+                        icon={
+                          <svg
+                            className='w-4 h-4'
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'
+                          >
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                            />
+                          </svg>
+                        }
+                        iconOnly
+                      />
+                      {sources.length > 1 && source.id && (
+                        <Button
+                          onClick={() => {
+                            if (source.id) {
+                              handleDeleteSource(source.id);
+                            }
+                          }}
+                          variant='ghost'
+                          size='sm'
+                          icon={
+                            <svg
+                              className='w-4 h-4'
+                              fill='none'
+                              stroke='currentColor'
+                              viewBox='0 0 24 24'
+                            >
+                              <path
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                                strokeWidth={2}
+                                d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+                              />
+                            </svg>
+                          }
+                          iconOnly
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Agregar Nueva Fuente */}
+        <div className='mb-6 p-4 border border-zinc-200 rounded-lg bg-zinc-50'>
+          <h4 className='text-md font-semibold mb-3 text-primary-dark'>
+            Agregar Nueva Fuente
+          </h4>
+          <div className='space-y-3'>
+            <input
+              type='text'
+              value={newSourceName}
+              onChange={(e) => setNewSourceName(e.target.value)}
+              className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
+              placeholder='Nombre de la fuente (ej: Efectivo, Banco, etc.)'
+              aria-label='Nombre de la nueva fuente'
+            />
+            <div className='grid grid-cols-2 gap-3'>
+              <div>
+                <label className='block text-sm font-medium mb-1'>
+                  Valor Esperado *
+                </label>
+                <input
+                  type='number'
+                  step='0.01'
+                  value={newSourceExpected}
+                  onChange={(e) => setNewSourceExpected(e.target.value)}
+                  className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
+                  placeholder='0.00'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium mb-1'>
+                  Valor Real
+                </label>
+                <input
+                  type='number'
+                  step='0.01'
+                  value={newSourceReal}
+                  onChange={(e) => setNewSourceReal(e.target.value)}
+                  className='w-full px-3 py-2 border border-zinc-200 rounded-lg'
+                  placeholder='Opcional'
+                />
+              </div>
+            </div>
+            <Button
+              onClick={handleAddSource}
+              variant='secondary'
+              size='md'
+              disabled={!newSourceName || !newSourceExpected}
+            >
+              Agregar Fuente
+            </Button>
+          </div>
+        </div>
+
+        <div className='flex gap-3'>
+          <Button
+            type='button'
+            onClick={onClose}
+            variant='outline'
+            size='md'
+            className='flex-1'
+          >
+            Cerrar
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

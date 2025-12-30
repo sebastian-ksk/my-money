@@ -3,6 +3,7 @@ import firebase from 'firebase/app';
 import type {
   Transaction,
   MonthlyLiquidityState,
+  LiquiditySource,
 } from '@/Redux/features/my-month/my-month-models';
 
 // Función auxiliar para calcular el periodo del mes basado en fecha de corte
@@ -28,6 +29,33 @@ export const calculateMonthPeriod = (
   }
 
   return `${year}-${String(month).padStart(2, '0')}`;
+};
+
+// Función auxiliar para calcular el mes y año a mostrar basado en monthResetDay
+// Si ya pasó el monthResetDay del mes actual, muestra el mes siguiente
+export const getCurrentDisplayMonth = (
+  monthResetDay: number
+): { month: number; year: number } => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth(); // 0-11
+  const day = today.getDate();
+
+  // Si el día actual es mayor o igual al día de corte, mostrar el mes siguiente
+  if (day >= monthResetDay) {
+    let displayMonth = month + 1;
+    let displayYear = year;
+
+    if (displayMonth === 12) {
+      displayMonth = 0;
+      displayYear = year + 1;
+    }
+
+    return { month: displayMonth, year: displayYear };
+  }
+
+  // Si aún no ha pasado el día de corte, mostrar el mes actual
+  return { month, year };
 };
 
 // Función auxiliar para obtener el periodo del mes anterior
@@ -153,7 +181,8 @@ export const myMonthService = {
     userId: string,
     monthPeriod: string,
     expectedAmount: number,
-    realAmount: number | null
+    realAmount: number | null,
+    liquiditySources?: LiquiditySource[]
   ): Promise<MonthlyLiquidityState> {
     const liquidityRef = firestore.collection('monthlyLiquidity');
     const querySnapshot = await liquidityRef
@@ -163,7 +192,7 @@ export const myMonthService = {
       .get();
 
     const now = firebase.firestore.Timestamp.now();
-    const data = {
+    const data: any = {
       userId,
       monthPeriod,
       expectedAmount,
@@ -171,11 +200,16 @@ export const myMonthService = {
       updatedAt: now,
     };
 
+    if (liquiditySources !== undefined) {
+      data.liquiditySources = liquiditySources;
+    }
+
     if (querySnapshot.empty) {
       // Crear nuevo
       const docRef = await liquidityRef.add({
         ...data,
         createdAt: now,
+        liquiditySources: liquiditySources || [],
       });
       const doc = await docRef.get();
       return { id: doc.id, ...doc.data() } as MonthlyLiquidityState;
@@ -213,5 +247,132 @@ export const myMonthService = {
       .reduce((sum, t) => sum + t.value, 0);
 
     return initialLiquidity + incomes - expenses;
+  },
+
+  // ========== Liquidity Sources ==========
+  async getLiquiditySources(
+    userId: string,
+    monthPeriod: string
+  ): Promise<LiquiditySource[]> {
+    const liquidity = await this.getMonthlyLiquidity(userId, monthPeriod);
+    return liquidity?.liquiditySources || [];
+  },
+
+  async createLiquiditySource(
+    userId: string,
+    monthPeriod: string,
+    source: Omit<LiquiditySource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ): Promise<LiquiditySource> {
+    const liquidity = await this.getMonthlyLiquidity(userId, monthPeriod);
+    const now = firebase.firestore.Timestamp.now();
+
+    const newSource: LiquiditySource = {
+      userId,
+      ...source,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const sources = liquidity?.liquiditySources || [];
+    const updatedSources = [...sources, newSource];
+
+    // Calcular totales
+    const expectedAmount = updatedSources.reduce(
+      (sum, s) => sum + s.expectedAmount,
+      0
+    );
+    const realAmount = updatedSources.reduce((sum, s) => {
+      return sum + (s.realAmount ?? 0);
+    }, 0);
+
+    await this.createOrUpdateMonthlyLiquidity(
+      userId,
+      monthPeriod,
+      expectedAmount,
+      realAmount > 0 ? realAmount : null,
+      updatedSources
+    );
+
+    return newSource;
+  },
+
+  async updateLiquiditySource(
+    userId: string,
+    monthPeriod: string,
+    sourceId: string,
+    source: Partial<
+      Omit<LiquiditySource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+    >
+  ): Promise<LiquiditySource> {
+    const liquidity = await this.getMonthlyLiquidity(userId, monthPeriod);
+    if (!liquidity) {
+      throw new Error('Liquidity state not found');
+    }
+
+    const sources = liquidity.liquiditySources || [];
+    const sourceIndex = sources.findIndex((s) => s.id === sourceId);
+    if (sourceIndex === -1) {
+      throw new Error('Liquidity source not found');
+    }
+
+    const now = firebase.firestore.Timestamp.now();
+    const updatedSource: LiquiditySource = {
+      ...sources[sourceIndex],
+      ...source,
+      updatedAt: now,
+    };
+
+    const updatedSources = [...sources];
+    updatedSources[sourceIndex] = updatedSource;
+
+    // Calcular totales
+    const expectedAmount = updatedSources.reduce(
+      (sum, s) => sum + s.expectedAmount,
+      0
+    );
+    const realAmount = updatedSources.reduce((sum, s) => {
+      return sum + (s.realAmount ?? 0);
+    }, 0);
+
+    await this.createOrUpdateMonthlyLiquidity(
+      userId,
+      monthPeriod,
+      expectedAmount,
+      realAmount > 0 ? realAmount : null,
+      updatedSources
+    );
+
+    return updatedSource;
+  },
+
+  async deleteLiquiditySource(
+    userId: string,
+    monthPeriod: string,
+    sourceId: string
+  ): Promise<void> {
+    const liquidity = await this.getMonthlyLiquidity(userId, monthPeriod);
+    if (!liquidity) {
+      throw new Error('Liquidity state not found');
+    }
+
+    const sources = liquidity.liquiditySources || [];
+    const updatedSources = sources.filter((s) => s.id !== sourceId);
+
+    // Calcular totales
+    const expectedAmount = updatedSources.reduce(
+      (sum, s) => sum + s.expectedAmount,
+      0
+    );
+    const realAmount = updatedSources.reduce((sum, s) => {
+      return sum + (s.realAmount ?? 0);
+    }, 0);
+
+    await this.createOrUpdateMonthlyLiquidity(
+      userId,
+      monthPeriod,
+      expectedAmount,
+      realAmount > 0 ? realAmount : null,
+      updatedSources
+    );
   },
 };

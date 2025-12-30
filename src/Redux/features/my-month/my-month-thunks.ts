@@ -3,7 +3,11 @@ import {
   myMonthService,
   getPreviousMonthPeriod,
 } from '@/services/Firebase/my-month-service';
-import type { Transaction, MonthlyLiquidityState } from './my-month-models';
+import type {
+  Transaction,
+  MonthlyLiquidityState,
+  LiquiditySource,
+} from './my-month-models';
 
 // ========== Transactions ==========
 export const loadTransactions = createAsyncThunk(
@@ -129,11 +133,39 @@ export const loadMonthlyLiquidity = createAsyncThunk(
           previousPeriod
         );
 
+        // Crear fuente por defecto "Neto"
+        const defaultSource: LiquiditySource = {
+          userId,
+          name: 'Neto',
+          expectedAmount: previousBalance,
+          realAmount: null,
+        };
+
         liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
           userId,
           monthPeriod,
           previousBalance,
-          null
+          null,
+          [defaultSource]
+        );
+      } else if (
+        !liquidity.liquiditySources ||
+        liquidity.liquiditySources.length === 0
+      ) {
+        // Si existe pero no tiene fuentes, crear una por defecto
+        const defaultSource: LiquiditySource = {
+          userId,
+          name: 'Neto',
+          expectedAmount: liquidity.expectedAmount,
+          realAmount: liquidity.realAmount,
+        };
+
+        liquidity = await myMonthService.createOrUpdateMonthlyLiquidity(
+          userId,
+          monthPeriod,
+          liquidity.expectedAmount,
+          liquidity.realAmount,
+          [defaultSource]
         );
       }
 
@@ -193,6 +225,135 @@ export const updateMonthlyLiquidity = createAsyncThunk(
       console.error('Error en updateMonthlyLiquidity:', error);
       return rejectWithValue(
         error.message || 'Error al actualizar estado de liquidez'
+      );
+    }
+  }
+);
+
+// ========== Liquidity Sources ==========
+export const loadLiquiditySources = createAsyncThunk(
+  'myMonth/loadLiquiditySources',
+  async (
+    {
+      userId,
+      monthPeriod,
+    }: {
+      userId: string;
+      monthPeriod: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await myMonthService.getLiquiditySources(userId, monthPeriod);
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al cargar fuentes de liquidez'
+      );
+    }
+  }
+);
+
+export const createLiquiditySource = createAsyncThunk(
+  'myMonth/createLiquiditySource',
+  async (
+    {
+      userId,
+      monthPeriod,
+      source,
+    }: {
+      userId: string;
+      monthPeriod: string;
+      source: Omit<
+        LiquiditySource,
+        'id' | 'userId' | 'createdAt' | 'updatedAt'
+      >;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const newSource = await myMonthService.createLiquiditySource(
+        userId,
+        monthPeriod,
+        source
+      );
+      // Recargar el estado de liquidez completo
+      const liquidity = await myMonthService.getMonthlyLiquidity(
+        userId,
+        monthPeriod
+      );
+      return { source: newSource, liquidity };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al crear fuente de liquidez'
+      );
+    }
+  }
+);
+
+export const updateLiquiditySource = createAsyncThunk(
+  'myMonth/updateLiquiditySource',
+  async (
+    {
+      userId,
+      monthPeriod,
+      sourceId,
+      source,
+    }: {
+      userId: string;
+      monthPeriod: string;
+      sourceId: string;
+      source: Partial<
+        Omit<LiquiditySource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+      >;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const updatedSource = await myMonthService.updateLiquiditySource(
+        userId,
+        monthPeriod,
+        sourceId,
+        source
+      );
+      // Recargar el estado de liquidez completo
+      const liquidity = await myMonthService.getMonthlyLiquidity(
+        userId,
+        monthPeriod
+      );
+      return { source: updatedSource, liquidity };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al actualizar fuente de liquidez'
+      );
+    }
+  }
+);
+
+export const deleteLiquiditySource = createAsyncThunk(
+  'myMonth/deleteLiquiditySource',
+  async (
+    {
+      userId,
+      monthPeriod,
+      sourceId,
+    }: {
+      userId: string;
+      monthPeriod: string;
+      sourceId: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      await myMonthService.deleteLiquiditySource(userId, monthPeriod, sourceId);
+      // Recargar el estado de liquidez completo
+      const liquidity = await myMonthService.getMonthlyLiquidity(
+        userId,
+        monthPeriod
+      );
+      return { sourceId, liquidity };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.message || 'Error al eliminar fuente de liquidez'
       );
     }
   }

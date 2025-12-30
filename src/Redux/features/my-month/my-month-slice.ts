@@ -6,6 +6,9 @@ import {
   deleteTransaction,
   loadMonthlyLiquidity,
   updateMonthlyLiquidity,
+  createLiquiditySource,
+  updateLiquiditySource,
+  deleteLiquiditySource,
 } from './my-month-thunks';
 import type { MyMonthState, Transaction } from './my-month-models';
 
@@ -102,6 +105,24 @@ const myMonthSlice = createSlice({
       .addCase(updateMonthlyLiquidity.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      // Create Liquidity Source
+      .addCase(createLiquiditySource.fulfilled, (state, action) => {
+        if (action.payload.liquidity) {
+          state.monthlyLiquidity = action.payload.liquidity;
+        }
+      })
+      // Update Liquidity Source
+      .addCase(updateLiquiditySource.fulfilled, (state, action) => {
+        if (action.payload.liquidity) {
+          state.monthlyLiquidity = action.payload.liquidity;
+        }
+      })
+      // Delete Liquidity Source
+      .addCase(deleteLiquiditySource.fulfilled, (state, action) => {
+        if (action.payload.liquidity) {
+          state.monthlyLiquidity = action.payload.liquidity;
+        }
       });
   },
 });
