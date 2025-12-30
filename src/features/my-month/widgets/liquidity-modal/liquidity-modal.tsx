@@ -16,13 +16,17 @@ import type {
 import { Button, useConfirm } from '@/components/ui';
 import ModalWithContent from '@/components/modal-with-content';
 import { formatCurrency } from '@/utils/currency';
-import { myMonthService } from '@/services/Firebase/my-month-service';
+import {
+  myMonthService,
+  getPreviousMonthPeriod,
+} from '@/services/Firebase/my-month-service';
 
 interface LiquidityModalProps {
   userId: string;
   monthPeriod: string;
   monthlyLiquidity: MonthlyLiquidityState | null;
   currency: string;
+  dayOfMonth: number;
   onClose: () => void;
   onSave: () => void;
 }
@@ -32,6 +36,7 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
   monthPeriod,
   monthlyLiquidity,
   currency,
+  dayOfMonth,
   onClose,
   onSave,
 }) => {
@@ -75,7 +80,10 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
   // Cargar datos de la fuente al formulario cuando se selecciona para editar
   useEffect(() => {
     if (editingSourceId) {
-      const sourceToEdit = sources.find((s) => s.id === editingSourceId);
+      const sourceToEdit = sources.find(
+        (s, idx) =>
+          s.id === editingSourceId || `source-${idx}` === editingSourceId
+      );
       if (sourceToEdit) {
         sourceForm.setValue('sourceName', sourceToEdit.name);
         sourceForm.setValue(
@@ -88,6 +96,58 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingSourceId, sources]);
+
+  // Verificar y crear monthly liquidity si no existe para el periodo actual
+  useEffect(() => {
+    const ensureMonthlyLiquidityExists = async () => {
+      try {
+        const today = new Date();
+        // Verificar si existe un documento para la fecha actual
+        let existingLiquidity = await myMonthService.getMonthlyLiquidityByDate(
+          userId,
+          today,
+          dayOfMonth
+        );
+
+        // Si no existe, verificar por monthPeriod
+        if (!existingLiquidity) {
+          existingLiquidity = await myMonthService.getMonthlyLiquidity(
+            userId,
+            monthPeriod
+          );
+        }
+
+        // Si aún no existe, crear uno nuevo
+        if (!existingLiquidity) {
+          const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+          const previousBalance = await myMonthService.calculateMonthBalance(
+            userId,
+            previousPeriod
+          );
+
+          await myMonthService.createOrUpdateMonthlyLiquidity(
+            userId,
+            monthPeriod,
+            previousBalance,
+            null,
+            [],
+            undefined,
+            undefined,
+            dayOfMonth
+          );
+          // Recargar después de crear
+          await onSave();
+        }
+      } catch (error) {
+        console.error('Error al verificar/crear monthly liquidity:', error);
+      }
+    };
+
+    if (userId && monthPeriod && dayOfMonth) {
+      ensureMonthlyLiquidityExists();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, monthPeriod, dayOfMonth]);
 
   // Cargar fuentes del mes anterior
   useEffect(() => {
@@ -125,12 +185,22 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
       const realAmount = parseFloat(data.realAmount);
 
       if (editingSourceId) {
+        // Buscar la fuente real por ID o índice
+        const sourceIndex = sources.findIndex(
+          (s, idx) =>
+            s.id === editingSourceId || `source-${idx}` === editingSourceId
+        );
+        const actualSourceId =
+          sourceIndex >= 0 && sources[sourceIndex]?.id
+            ? sources[sourceIndex].id!
+            : editingSourceId;
+
         // Actualizar fuente existente
         await dispatch(
           updateLiquiditySource({
             userId,
             monthPeriod,
-            sourceId: editingSourceId,
+            sourceId: actualSourceId,
             source: {
               name: sourceName,
               expectedAmount,
@@ -182,11 +252,20 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
     if (!confirmed) return;
 
     try {
+      // Buscar la fuente real por ID o índice
+      const sourceIndex = sources.findIndex(
+        (s, idx) => s.id === sourceId || `source-${idx}` === sourceId
+      );
+      const actualSourceId =
+        sourceIndex >= 0 && sources[sourceIndex]?.id
+          ? sources[sourceIndex].id!
+          : sourceId;
+
       await dispatch(
         deleteLiquiditySource({
           userId,
           monthPeriod,
-          sourceId,
+          sourceId: actualSourceId,
         })
       ).unwrap();
       await onSave();
@@ -267,32 +346,34 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
                       </div>
                     </div>
                   </div>
-                  {source.id && (
-                    <div className='flex gap-2 shrink-0'>
-                      <Button
-                        onClick={() => handleEditSource(source.id!)}
-                        variant='ghost'
-                        size='sm'
-                        icon={<HiPencil className='w-4 h-4' />}
-                        iconOnly
-                        aria-label='Editar fuente'
-                        disabled={editingSourceId === source.id}
-                      />
-                      <Button
-                        onClick={() => {
-                          if (source.id) {
-                            handleDeleteSource(source.id);
-                          }
-                        }}
-                        variant='ghost'
-                        size='sm'
-                        icon={<HiTrash className='w-4 h-4' />}
-                        iconOnly
-                        aria-label='Eliminar fuente'
-                        disabled={!!editingSourceId}
-                      />
-                    </div>
-                  )}
+                  <div className='flex gap-2 shrink-0'>
+                    <Button
+                      onClick={() => {
+                        const sourceId = source.id || `source-${index}`;
+                        handleEditSource(sourceId);
+                      }}
+                      variant='ghost'
+                      size='sm'
+                      icon={<HiPencil className='w-4 h-4' />}
+                      iconOnly
+                      aria-label='Editar fuente'
+                      disabled={
+                        editingSourceId === (source.id || `source-${index}`)
+                      }
+                    />
+                    <Button
+                      onClick={() => {
+                        const sourceId = source.id || `source-${index}`;
+                        handleDeleteSource(sourceId);
+                      }}
+                      variant='ghost'
+                      size='sm'
+                      icon={<HiTrash className='w-4 h-4' />}
+                      iconOnly
+                      aria-label='Eliminar fuente'
+                      disabled={!!editingSourceId}
+                    />
+                  </div>
                 </div>
               </div>
             ))}
