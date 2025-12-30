@@ -209,11 +209,51 @@ export const loadMonthlyLiquidity = createAsyncThunk(
         // Si hay valores reales, no hacer nada - respetar lo que el usuario ingresó
       }
 
+      // Actualizar balances después de cargar
+      if (liquidity && dayOfMonth) {
+        liquidity = await myMonthService.updateMonthBalances(
+          userId,
+          monthPeriod,
+          dayOfMonth
+        );
+      }
+
       return liquidity;
     } catch (error: unknown) {
       console.error('Error en loadMonthlyLiquidity:', error);
       return rejectWithValue(
         (error as Error).message || 'Error al cargar estado de liquidez'
+      );
+    }
+  }
+);
+
+// Thunk para actualizar balances del mes
+export const updateMonthBalances = createAsyncThunk(
+  'myMonth/updateMonthBalances',
+  async (
+    {
+      userId,
+      monthPeriod,
+      dayOfMonth,
+    }: {
+      userId: string;
+      monthPeriod: string;
+      dayOfMonth?: number;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const liquidity = await myMonthService.updateMonthBalances(
+        userId,
+        monthPeriod,
+        dayOfMonth
+      );
+      return liquidity;
+    } catch (error: unknown) {
+      console.error('Error en updateMonthBalances:', error);
+      return rejectWithValue(
+        (error as Error).message || 'Error al actualizar balances del mes'
       );
     }
   }

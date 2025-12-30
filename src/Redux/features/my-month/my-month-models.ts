@@ -46,6 +46,9 @@ export interface MonthlyLiquidityState {
   expectedAmount: number; // Valor esperado total (suma de todas las fuentes)
   realAmount: number | null; // Valor real total (suma de todas las fuentes, puede ser null)
   liquiditySources: LiquiditySource[]; // Fuentes de liquidez (referencias por ID)
+  totalExpenses?: number; // Total de gastos del mes (fixed_expense + regular_expense)
+  totalIncomes?: number; // Total de ingresos del mes (expected_income + unexpected_income)
+  finalBalance?: number; // Balance final: liquidez inicial + ingresos - gastos
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }

@@ -246,7 +246,10 @@ export const myMonthService = {
     liquiditySources?: LiquiditySource[],
     startDate?: Date,
     endDate?: Date,
-    dayOfMonth?: number
+    dayOfMonth?: number,
+    totalExpenses?: number,
+    totalIncomes?: number,
+    finalBalance?: number
   ): Promise<MonthlyLiquidityState> {
     const liquidityRef = firestore.collection('monthlyLiquidity');
     
@@ -269,36 +272,21 @@ export const myMonthService = {
       finalEndDate = new Date(year, month, 0, 23, 59, 59);
     }
 
-    // Buscar por rango de fechas: verificar si la fecha actual está dentro del rango
-    const today = new Date();
-    const todayTimestamp = firebase.firestore.Timestamp.fromDate(today);
     const startTimestamp = firebase.firestore.Timestamp.fromDate(finalStartDate);
     const endTimestamp = firebase.firestore.Timestamp.fromDate(finalEndDate);
     
-    // Buscar documentos donde la fecha actual esté entre startDate y endDate
-    const dateRangeQuery = await liquidityRef
+    // Buscar primero por monthPeriod (más eficiente y evita problemas con desigualdades)
+    let querySnapshot = await liquidityRef
       .where('userId', '==', userId)
-      .where('startDate', '<=', todayTimestamp)
-      .where('endDate', '>=', todayTimestamp)
+      .where('monthPeriod', '==', monthPeriod)
       .limit(1)
       .get();
 
-    // Si no se encuentra por rango de fechas, buscar por startDate exacto
-    let querySnapshot = dateRangeQuery;
-    if (querySnapshot.empty) {
-      const exactDateQuery = await liquidityRef
-        .where('userId', '==', userId)
-        .where('startDate', '==', startTimestamp)
-        .limit(1)
-        .get();
-      querySnapshot = exactDateQuery;
-    }
-
-    // Si aún no se encuentra, buscar por monthPeriod (compatibilidad)
+    // Si no se encuentra por monthPeriod, buscar por startDate exacto
     if (querySnapshot.empty) {
       querySnapshot = await liquidityRef
         .where('userId', '==', userId)
-        .where('monthPeriod', '==', monthPeriod)
+        .where('startDate', '==', startTimestamp)
         .limit(1)
         .get();
     }
@@ -316,6 +304,17 @@ export const myMonthService = {
 
     if (liquiditySources !== undefined) {
       data.liquiditySources = liquiditySources;
+    }
+
+    // Agregar balances si se proporcionan
+    if (totalExpenses !== undefined) {
+      data.totalExpenses = totalExpenses;
+    }
+    if (totalIncomes !== undefined) {
+      data.totalIncomes = totalIncomes;
+    }
+    if (finalBalance !== undefined) {
+      data.finalBalance = finalBalance;
     }
 
     if (querySnapshot.empty) {
@@ -336,6 +335,77 @@ export const myMonthService = {
     }
   },
 
+  // Calcular y actualizar balances del mes
+  async updateMonthBalances(
+    userId: string,
+    monthPeriod: string,
+    dayOfMonth?: number
+  ): Promise<MonthlyLiquidityState> {
+    // Obtener el estado de liquidez del mes
+    let liquidity = await this.getMonthlyLiquidity(userId, monthPeriod);
+    
+    // Si no existe, crear uno con el expectedAmount del mes anterior
+    if (!liquidity) {
+      const previousPeriod = getPreviousMonthPeriod(monthPeriod);
+      const previousBalance = await this.calculateMonthBalance(
+        userId,
+        previousPeriod
+      );
+
+      liquidity = await this.createOrUpdateMonthlyLiquidity(
+        userId,
+        monthPeriod,
+        previousBalance,
+        null,
+        [],
+        undefined,
+        undefined,
+        dayOfMonth
+      );
+    }
+
+    // Obtener todas las transacciones del mes
+    const transactions = await this.getTransactions(userId, monthPeriod);
+
+    // Calcular ingresos (expected_income + unexpected_income)
+    const totalIncomes = transactions
+      .filter(
+        (t) => t.type === 'expected_income' || t.type === 'unexpected_income'
+      )
+      .reduce((sum, t) => sum + t.value, 0);
+
+    // Calcular gastos (fixed_expense + regular_expense)
+    const totalExpenses = transactions
+      .filter((t) => t.type === 'fixed_expense' || t.type === 'regular_expense')
+      .reduce((sum, t) => sum + t.value, 0);
+
+    // Calcular liquidez inicial (suma de fuentes reales o expectedAmount)
+    const initialLiquidity =
+      liquidity.realAmount ??
+      (liquidity.liquiditySources.reduce(
+        (sum, s) => sum + (s.realAmount ?? 0),
+        0
+      ) || liquidity.expectedAmount || 0);
+
+    // Calcular balance final
+    const finalBalance = initialLiquidity + totalIncomes - totalExpenses;
+
+    // Actualizar el documento con los balances
+    return await this.createOrUpdateMonthlyLiquidity(
+      userId,
+      monthPeriod,
+      liquidity.expectedAmount,
+      liquidity.realAmount,
+      liquidity.liquiditySources,
+      liquidity.startDate?.toDate(),
+      liquidity.endDate?.toDate(),
+      dayOfMonth,
+      totalExpenses,
+      totalIncomes,
+      finalBalance
+    );
+  },
+
   // Calcular el balance final de un mes (para usar como expectedAmount del siguiente)
   async calculateMonthBalance(
     userId: string,
@@ -344,7 +414,11 @@ export const myMonthService = {
     // Obtener el estado de liquidez del mes
     const liquidity = await this.getMonthlyLiquidity(userId, monthPeriod);
     const initialLiquidity =
-      liquidity?.realAmount ?? liquidity?.expectedAmount ?? 0;
+      liquidity?.realAmount ??
+      (liquidity?.liquiditySources.reduce(
+        (sum, s) => sum + (s.realAmount ?? 0),
+        0
+      ) || liquidity?.expectedAmount || 0);
 
     // Obtener todas las transacciones del mes
     const transactions = await this.getTransactions(userId, monthPeriod);

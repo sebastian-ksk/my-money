@@ -22,9 +22,6 @@ import {
 } from '@/Redux/features/config-my-money';
 import {
   selectTransactions,
-  selectTotalFixedExpensePayments,
-  selectTotalRealIncomes,
-  selectTotalRegularExpenses,
   selectMyMonthLoading,
   selectMonthlyLiquidity,
 } from '@/Redux/features/my-month';
@@ -32,6 +29,7 @@ import {
   loadTransactions,
   deleteTransaction,
   loadMonthlyLiquidity,
+  updateMonthBalances,
 } from '@/Redux/features/my-month/my-month-thunks';
 import {
   calculateMonthPeriod,
@@ -49,9 +47,6 @@ const MyMonth = () => {
   const expectedIncomes = useAppSelector(selectExpectedIncomes);
   const savingsSources = useAppSelector(selectSavingsSources);
   const transactions = useAppSelector(selectTransactions);
-  const totalFixedPayments = useAppSelector(selectTotalFixedExpensePayments);
-  const totalIncomes = useAppSelector(selectTotalRealIncomes);
-  const totalRegularExpenses = useAppSelector(selectTotalRegularExpenses);
   const loading = useAppSelector(selectMyMonthLoading);
   const monthlyLiquidity = useAppSelector(selectMonthlyLiquidity);
   const confirm = useConfirm();
@@ -77,10 +72,6 @@ const MyMonth = () => {
     new Date(selectedYear, selectedMonth, 15),
     monthResetDay
   );
-
-  // Calcular balance: líquido inicial esperado + ingresos reales - gastos (fijos + eventuales)
-  const totalLiquid = monthlyLiquidity?.expectedAmount ?? 0;
-  const totalExpenses = totalFixedPayments + totalRegularExpenses;
 
   // Calcular valor neto: suma de valores reales de todas las fuentes
   const liquiditySources = monthlyLiquidity?.liquiditySources || [];
@@ -129,9 +120,20 @@ const MyMonth = () => {
           userId: user.uid,
           monthPeriod: currentPeriod,
         })
-      ).catch((error: unknown) => {
-        console.error('Error al cargar transacciones:', error);
-      });
+      )
+        .then(() => {
+          // Actualizar balances después de cargar transacciones
+          return dispatch(
+            updateMonthBalances({
+              userId: user.uid,
+              monthPeriod: currentPeriod,
+              dayOfMonth: userConfig.monthResetDay,
+            })
+          );
+        })
+        .catch((error: unknown) => {
+          console.error('Error al cargar transacciones:', error);
+        });
 
       dispatch(
         loadMonthlyLiquidity({
@@ -187,6 +189,16 @@ const MyMonth = () => {
           monthPeriod: currentPeriod,
         })
       ).unwrap();
+      // Actualizar balances después de eliminar
+      if (userConfig) {
+        await dispatch(
+          updateMonthBalances({
+            userId: user.uid,
+            monthPeriod: currentPeriod,
+            dayOfMonth: userConfig.monthResetDay,
+          })
+        ).unwrap();
+      }
     } catch (error) {
       console.error('Error al eliminar transacción:', error);
     }
@@ -351,10 +363,45 @@ const MyMonth = () => {
         >
           {/* Balance Section */}
           <div className='mb-6'>
-            <div className='flex items-center gap-3 text-sm'>
+            <div className='flex flex-wrap items-center gap-4 text-sm'>
               <div className='text-zinc-600'>
                 <span className='font-medium'>El mes pasado te quedó:</span>{' '}
-                {formatCurrency(displayLiquidity ?? 0, currency)}
+                <span className='font-semibold text-zinc-800'>
+                  {formatCurrency(displayLiquidity ?? 0, currency)}
+                </span>
+              </div>
+              <div className='text-zinc-600'>
+                <span className='font-medium'>Este mes has gastado:</span>{' '}
+                <span className='font-semibold text-red-600'>
+                  {formatCurrency(
+                    monthlyLiquidity?.totalExpenses ?? 0,
+                    currency
+                  )}
+                </span>
+              </div>
+              <div className='text-zinc-600'>
+                <span className='font-medium'>Te ha ingresado:</span>{' '}
+                <span className='font-semibold text-green-600'>
+                  {formatCurrency(
+                    monthlyLiquidity?.totalIncomes ?? 0,
+                    currency
+                  )}
+                </span>
+              </div>
+              <div className='text-zinc-600'>
+                <span className='font-medium'>Te queda:</span>{' '}
+                <span
+                  className={`font-semibold ${
+                    (monthlyLiquidity?.finalBalance ?? 0) >= 0
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }`}
+                >
+                  {formatCurrency(
+                    monthlyLiquidity?.finalBalance ?? 0,
+                    currency
+                  )}
+                </span>
               </div>
               <Button
                 onClick={() => setShowLiquidityModal(true)}
@@ -661,6 +708,16 @@ const MyMonth = () => {
                 monthPeriod: currentPeriod,
               })
             ).unwrap();
+            // Actualizar balances después de guardar
+            if (user?.uid && userConfig) {
+              await dispatch(
+                updateMonthBalances({
+                  userId: user.uid,
+                  monthPeriod: currentPeriod,
+                  dayOfMonth: userConfig.monthResetDay,
+                })
+              ).unwrap();
+            }
             setShowIncomeModal(false);
             setEditingTransaction(null);
           }}
@@ -690,6 +747,16 @@ const MyMonth = () => {
                 monthPeriod: currentPeriod,
               })
             ).unwrap();
+            // Actualizar balances después de guardar
+            if (user?.uid && userConfig) {
+              await dispatch(
+                updateMonthBalances({
+                  userId: user.uid,
+                  monthPeriod: currentPeriod,
+                  dayOfMonth: userConfig.monthResetDay,
+                })
+              ).unwrap();
+            }
             setShowSavingsModal(false);
             setEditingTransaction(null);
           }}
@@ -713,6 +780,16 @@ const MyMonth = () => {
                 dayOfMonth: userConfig?.monthResetDay,
               })
             ).unwrap();
+            // Actualizar balances después de guardar
+            if (user?.uid && userConfig) {
+              await dispatch(
+                updateMonthBalances({
+                  userId: user.uid,
+                  monthPeriod: currentPeriod,
+                  dayOfMonth: userConfig.monthResetDay,
+                })
+              ).unwrap();
+            }
             setShowLiquidityModal(false);
           }}
         />
@@ -741,6 +818,16 @@ const MyMonth = () => {
                 monthPeriod: currentPeriod,
               })
             ).unwrap();
+            // Actualizar balances después de guardar
+            if (user?.uid && userConfig) {
+              await dispatch(
+                updateMonthBalances({
+                  userId: user.uid,
+                  monthPeriod: currentPeriod,
+                  dayOfMonth: userConfig.monthResetDay,
+                })
+              ).unwrap();
+            }
             setShowExpenseModal(false);
             setEditingTransaction(null);
           }}
