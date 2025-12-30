@@ -125,44 +125,18 @@ export const findCurrentPeriod = async (
   dayOfMonth: number
 ): Promise<MonthlyLiquidityState | null> => {
   const liquidityRef = firestore.collection('monthlyLiquidity');
-  const dateTimestamp = firebase.firestore.Timestamp.fromDate(date);
 
   // Calcular el periodo basado en la fecha
   const monthPeriod = calculateMonthPeriod(date, dayOfMonth);
 
-  // Primero buscar por monthPeriod (más eficiente)
-  let querySnapshot = await liquidityRef
+  // Buscar solo por monthPeriod (no requiere índices adicionales)
+  const querySnapshot = await liquidityRef
     .where('userId', '==', userId)
     .where('monthPeriod', '==', monthPeriod)
     .limit(1)
     .get();
 
-  // Si no se encuentra por monthPeriod, buscar por rango de fechas
-  // Nota: Firestore no permite dos desigualdades en diferentes campos,
-  // así que buscamos solo por startDate <= fecha
   if (querySnapshot.empty) {
-    querySnapshot = await liquidityRef
-      .where('userId', '==', userId)
-      .where('startDate', '<=', dateTimestamp)
-      .orderBy('startDate', 'desc')
-      .limit(10)
-      .get();
-
-    // Filtrar manualmente los que también cumplen endDate >= fecha
-    const matchingDocs = querySnapshot.docs.filter((doc) => {
-      const data = doc.data();
-      const endDate = data.endDate as firebase.firestore.Timestamp;
-      return endDate && endDate >= dateTimestamp;
-    });
-
-    if (matchingDocs.length > 0) {
-      const doc = matchingDocs[0];
-      return {
-        id: doc.id,
-        ...doc.data(),
-      } as MonthlyLiquidityState;
-    }
-
     return null;
   }
 
@@ -300,24 +274,12 @@ export const myMonthService = {
       finalEndDate = new Date(year, month, 0, 23, 59, 59);
     }
 
-    const startTimestamp =
-      firebase.firestore.Timestamp.fromDate(finalStartDate);
-
-    // Buscar primero por monthPeriod (más eficiente y evita problemas con desigualdades)
-    let querySnapshot = await liquidityRef
+    // Buscar solo por monthPeriod (no requiere índices adicionales)
+    const querySnapshot = await liquidityRef
       .where('userId', '==', userId)
       .where('monthPeriod', '==', monthPeriod)
       .limit(1)
       .get();
-
-    // Si no se encuentra por monthPeriod, buscar por startDate exacto
-    if (querySnapshot.empty) {
-      querySnapshot = await liquidityRef
-        .where('userId', '==', userId)
-        .where('startDate', '==', startTimestamp)
-        .limit(1)
-        .get();
-    }
 
     const now = firebase.firestore.Timestamp.now();
     const data: Partial<MonthlyLiquidityState> = {

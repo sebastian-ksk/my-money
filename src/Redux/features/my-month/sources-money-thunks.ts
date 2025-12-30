@@ -32,7 +32,7 @@ export const loadAllSources = createAsyncThunk(
       return await sourcesMoneyService.getAllSources(userId);
     } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al cargar todas las fuentes'
+        (error as Error).message || 'Error al cargar todas las fuentes'
       );
     }
   }
@@ -52,7 +52,7 @@ export const createMoneySource = createAsyncThunk(
       return await sourcesMoneyService.createSource(source);
     } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al crear fuente de dinero'
+        (error as Error).message || 'Error al crear fuente de dinero'
       );
     }
   }
@@ -76,7 +76,7 @@ export const updateMoneySource = createAsyncThunk(
       return await sourcesMoneyService.updateSource(sourceId, source);
     } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al actualizar fuente de dinero'
+        (error as Error).message || 'Error al actualizar fuente de dinero'
       );
     }
   }
@@ -90,7 +90,7 @@ export const deleteMoneySource = createAsyncThunk(
       return sourceId;
     } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al eliminar fuente de dinero'
+        (error as Error).message || 'Error al eliminar fuente de dinero'
       );
     }
   }
@@ -115,7 +115,7 @@ export const loadPreviousMonthSources = createAsyncThunk(
       );
     } catch (error: unknown) {
       return rejectWithValue(
-        error.message || 'Error al cargar fuentes del mes anterior'
+        (error as Error).message || 'Error al cargar fuentes del mes anterior'
       );
     }
   }
