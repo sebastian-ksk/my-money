@@ -22,6 +22,7 @@ import {
 } from './sources-money-thunks';
 import type { MyMonthState, Transaction } from './my-month-models';
 
+const currentDate = new Date();
 const initialState: MyMonthState = {
   transactions: [],
   monthlyLiquidity: null,
@@ -29,6 +30,9 @@ const initialState: MyMonthState = {
   loading: false,
   error: null,
   currentMonthPeriod: null,
+  selectedMonth: currentDate.getMonth(),
+  selectedYear: currentDate.getFullYear(),
+  isInitialized: false,
 };
 
 const myMonthSlice = createSlice({
@@ -40,6 +44,32 @@ const myMonthSlice = createSlice({
     },
     setCurrentMonthPeriod: (state, action: PayloadAction<string>) => {
       state.currentMonthPeriod = action.payload;
+    },
+    setSelectedMonth: (state, action: PayloadAction<number>) => {
+      state.selectedMonth = action.payload;
+      state.isInitialized = true;
+    },
+    setSelectedYear: (state, action: PayloadAction<number>) => {
+      state.selectedYear = action.payload;
+      state.isInitialized = true;
+    },
+    setSelectedMonthAndYear: (
+      state,
+      action: PayloadAction<{ month: number; year: number }>
+    ) => {
+      state.selectedMonth = action.payload.month;
+      state.selectedYear = action.payload.year;
+      state.isInitialized = true;
+    },
+    initializeSelectedMonth: (
+      state,
+      action: PayloadAction<{ month: number; year: number }>
+    ) => {
+      if (!state.isInitialized) {
+        state.selectedMonth = action.payload.month;
+        state.selectedYear = action.payload.year;
+        state.isInitialized = true;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -195,5 +225,12 @@ const myMonthSlice = createSlice({
   },
 });
 
-export const { clearError, setCurrentMonthPeriod } = myMonthSlice.actions;
+export const {
+  clearError,
+  setCurrentMonthPeriod,
+  setSelectedMonth,
+  setSelectedYear,
+  setSelectedMonthAndYear,
+  initializeSelectedMonth,
+} = myMonthSlice.actions;
 export const myMonthReducer = myMonthSlice.reducer;

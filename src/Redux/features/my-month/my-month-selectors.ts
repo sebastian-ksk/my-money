@@ -53,3 +53,10 @@ export const selectTotalExpenses = (state: RootState) => {
 
 export const selectMonthlyLiquidity = (state: RootState) =>
   state.myMonth.monthlyLiquidity;
+
+export const selectSelectedMonth = (state: RootState) =>
+  state.myMonth.selectedMonth;
+export const selectSelectedYear = (state: RootState) =>
+  state.myMonth.selectedYear;
+export const selectIsMonthInitialized = (state: RootState) =>
+  state.myMonth.isInitialized;

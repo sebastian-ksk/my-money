@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import firebaseApp from 'firebase/app';
 import { Button } from '@/components/ui';
-import MonthTabs from '@/features/my-month/widgets/month-tabs/month-tabs';
 import LiquidityModal from '@/features/my-month/widgets/liquidity-modal/liquidity-modal';
 import ExpenseModal from '@/features/my-month/widgets/expense-modal/expense-modal';
 import IncomeModal from '@/features/my-month/widgets/income-modal/income-modal';
@@ -24,6 +23,10 @@ import {
   selectTransactions,
   selectMyMonthLoading,
   selectMonthlyLiquidity,
+  selectSelectedMonth,
+  selectSelectedYear,
+  selectIsMonthInitialized,
+  initializeSelectedMonth,
 } from '@/Redux/features/my-month';
 import {
   loadTransactions,
@@ -49,22 +52,17 @@ const MyMonth = () => {
   const transactions = useAppSelector(selectTransactions);
   const loading = useAppSelector(selectMyMonthLoading);
   const monthlyLiquidity = useAppSelector(selectMonthlyLiquidity);
+  const selectedMonth = useAppSelector(selectSelectedMonth);
+  const selectedYear = useAppSelector(selectSelectedYear);
+  const isInitialized = useAppSelector(selectIsMonthInitialized);
   const confirm = useConfirm();
 
-  const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [showLiquidityModal, setShowLiquidityModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showSavingsModal, setShowSavingsModal] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
-
-  // Log para debugging
-  useEffect(() => {
-    console.log('Estado del usuario en MyMonth:', { user, uid: user?.uid });
-  }, [user]);
 
   // Calcular el periodo del mes basado en la fecha de corte
   const monthResetDay = userConfig?.monthResetDay || 1;
@@ -99,17 +97,19 @@ const MyMonth = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, dispatch]);
 
-  // Actualizar mes y año cuando se carga la configuración del usuario
-  // Solo actualizar si aún no se ha cambiado manualmente (primera carga)
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Inicializar mes y año cuando se carga la configuración del usuario
+  // Solo actualizar si aún no se ha inicializado (primera carga)
   useEffect(() => {
     if (userConfig?.monthResetDay !== undefined && !isInitialized) {
       const currentDisplay = getCurrentDisplayMonth(userConfig.monthResetDay);
-      setSelectedMonth(currentDisplay.month);
-      setSelectedYear(currentDisplay.year);
-      setIsInitialized(true);
+      dispatch(
+        initializeSelectedMonth({
+          month: currentDisplay.month,
+          year: currentDisplay.year,
+        })
+      );
     }
-  }, [userConfig?.monthResetDay, isInitialized]);
+  }, [userConfig?.monthResetDay, isInitialized, dispatch]);
 
   // Cargar datos del mes
   useEffect(() => {
@@ -146,12 +146,6 @@ const MyMonth = () => {
       });
     }
   }, [user?.uid, currentPeriod, userConfig, dispatch]);
-
-  const handleMonthChange = (month: number, year: number) => {
-    setSelectedMonth(month);
-    setSelectedYear(year);
-    setIsInitialized(true); // Marcar como inicializado cuando el usuario cambia manualmente
-  };
 
   const handleOpenIncomeModal = (transaction?: Transaction | null) => {
     // Asegurar que los ingresos esperados estén cargados
@@ -353,63 +347,110 @@ const MyMonth = () => {
     return dateB - dateA;
   });
 
+  // Calcular gastos totales: suma de regular_expense y fixed_expense
+  const totalExpenses = mappedTransactions
+    .filter((t) => t.type === 'regular_expense' || t.type === 'fixed_expense')
+    .reduce((sum, t) => sum + (t.value ?? 0), 0);
+
+  // Calcular ingresos totales: suma de unexpected_income y expected_income
+  const totalIncomes = mappedTransactions
+    .filter(
+      (t) => t.type === 'unexpected_income' || t.type === 'expected_income'
+    )
+    .reduce((sum, t) => sum + (t.value ?? 0), 0);
+
+  // Calcular balance final: lo que tenía + ingresos - gastos
+  const finalBalance = displayLiquidity + totalIncomes - totalExpenses;
+
+  // Helper para obtener el tipo de transacción en español
+  const getTransactionTypeLabel = (type: string) => {
+    const types: Record<string, string> = {
+      fixed_expense: 'Gasto Fijo',
+      regular_expense: 'Gasto',
+      expected_income: 'Ingreso Esperado',
+      unexpected_income: 'Ingreso Inesperado',
+      savings: 'Ahorro',
+    };
+    return types[type] || 'Gasto';
+  };
+
+  // Helper para obtener el color del badge según el tipo
+  const getTransactionTypeColor = (type: string, isPending: boolean) => {
+    if (isPending) return 'bg-amber-100 text-amber-800 border-amber-300';
+    const colors: Record<string, string> = {
+      fixed_expense: 'bg-red-100 text-red-800 border-red-300',
+      regular_expense: 'bg-orange-100 text-orange-800 border-orange-300',
+      expected_income: 'bg-blue-100 text-blue-800 border-blue-300',
+      unexpected_income: 'bg-green-100 text-green-800 border-green-300',
+      savings: 'bg-purple-100 text-purple-800 border-purple-300',
+    };
+    return colors[type] || 'bg-gray-100 text-gray-800 border-gray-300';
+  };
+
   return (
-    <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4'>
-      <div className='bg-white rounded-lg shadow-lg p-8'>
-        <MonthTabs
-          selectedMonth={selectedMonth}
-          selectedYear={selectedYear}
-          onMonthChange={handleMonthChange}
-        >
-          {/* Balance Section */}
-          <div className='mb-6'>
-            <div className='flex flex-wrap items-center gap-4 text-sm'>
-              <div className='text-zinc-600'>
-                <span className='font-medium'>El mes pasado te quedó:</span>{' '}
-                <span className='font-semibold text-zinc-800'>
-                  {formatCurrency(displayLiquidity ?? 0, currency)}
-                </span>
+    <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6'>
+      <div className='bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8'>
+        {/* Balance Cards Section - Responsive Grid */}
+        <div className='mb-6 sm:mb-8'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4'>
+            {/* Card: Saldo Inicial */}
+            <div className='bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 sm:p-5 border border-blue-200 shadow-sm'>
+              <div className='flex items-start justify-between mb-2'>
+                <div className='flex items-center gap-2'>
+                  <div className='p-2 bg-blue-200 rounded-lg'>
+                    <svg
+                      className='w-5 h-5 text-blue-700'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                      />
+                    </svg>
+                  </div>
+                  <h3 className='text-sm font-medium text-blue-900'>
+                    Saldo Inicial
+                  </h3>
+                </div>
+                <Button
+                  onClick={() => setShowLiquidityModal(true)}
+                  variant='ghost'
+                  size='sm'
+                  className='!p-1'
+                  icon={
+                    <svg
+                      className='w-4 h-4'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                      />
+                    </svg>
+                  }
+                  iconOnly
+                />
               </div>
-              <div className='text-zinc-600'>
-                <span className='font-medium'>Este mes has gastado:</span>{' '}
-                <span className='font-semibold text-red-600'>
-                  {formatCurrency(
-                    monthlyLiquidity?.totalExpenses ?? 0,
-                    currency
-                  )}
-                </span>
-              </div>
-              <div className='text-zinc-600'>
-                <span className='font-medium'>Te ha ingresado:</span>{' '}
-                <span className='font-semibold text-green-600'>
-                  {formatCurrency(
-                    monthlyLiquidity?.totalIncomes ?? 0,
-                    currency
-                  )}
-                </span>
-              </div>
-              <div className='text-zinc-600'>
-                <span className='font-medium'>Te queda:</span>{' '}
-                <span
-                  className={`font-semibold ${
-                    (monthlyLiquidity?.finalBalance ?? 0) >= 0
-                      ? 'text-green-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {formatCurrency(
-                    monthlyLiquidity?.finalBalance ?? 0,
-                    currency
-                  )}
-                </span>
-              </div>
-              <Button
-                onClick={() => setShowLiquidityModal(true)}
-                variant='ghost'
-                size='sm'
-                icon={
+              <p className='text-2xl sm:text-3xl font-bold text-blue-900'>
+                {formatCurrency(displayLiquidity ?? 0, currency)}
+              </p>
+              <p className='text-xs text-blue-700 mt-1'>Del mes anterior</p>
+            </div>
+
+            {/* Card: Gastos */}
+            <div className='bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 sm:p-5 border border-red-200 shadow-sm'>
+              <div className='flex items-center gap-2 mb-2'>
+                <div className='p-2 bg-red-200 rounded-lg'>
                   <svg
-                    className='w-4 h-4'
+                    className='w-5 h-5 text-red-700'
                     fill='none'
                     stroke='currentColor'
                     viewBox='0 0 24 24'
@@ -418,271 +459,538 @@ const MyMonth = () => {
                       strokeLinecap='round'
                       strokeLinejoin='round'
                       strokeWidth={2}
-                      d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                      d='M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'
                     />
                   </svg>
-                }
-                iconOnly
-              />
+                </div>
+                <h3 className='text-sm font-medium text-red-900'>Gastos</h3>
+              </div>
+              <p className='text-2xl sm:text-3xl font-bold text-red-700'>
+                {formatCurrency(totalExpenses, currency)}
+              </p>
+              <p className='text-xs text-red-700 mt-1'>Este mes</p>
+            </div>
+
+            {/* Card: Ingresos */}
+            <div className='bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 sm:p-5 border border-green-200 shadow-sm'>
+              <div className='flex items-center gap-2 mb-2'>
+                <div className='p-2 bg-green-200 rounded-lg'>
+                  <svg
+                    className='w-5 h-5 text-green-700'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                    />
+                  </svg>
+                </div>
+                <h3 className='text-sm font-medium text-green-900'>Ingresos</h3>
+              </div>
+              <p className='text-2xl sm:text-3xl font-bold text-green-700'>
+                {formatCurrency(totalIncomes, currency)}
+              </p>
+              <p className='text-xs text-green-700 mt-1'>Este mes</p>
+            </div>
+
+            {/* Card: Balance Final */}
+            <div
+              className={`rounded-xl p-4 sm:p-5 border shadow-sm ${
+                finalBalance >= 0
+                  ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'
+                  : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
+              }`}
+            >
+              <div className='flex items-center gap-2 mb-2'>
+                <div
+                  className={`p-2 rounded-lg ${
+                    finalBalance >= 0 ? 'bg-green-200' : 'bg-red-200'
+                  }`}
+                >
+                  <svg
+                    className={`w-5 h-5 ${
+                      finalBalance >= 0 ? 'text-green-700' : 'text-red-700'
+                    }`}
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
+                    />
+                  </svg>
+                </div>
+                <h3
+                  className={`text-sm font-medium ${
+                    finalBalance >= 0 ? 'text-green-900' : 'text-red-900'
+                  }`}
+                >
+                  Balance Final
+                </h3>
+              </div>
+              <p
+                className={`text-2xl sm:text-3xl font-bold ${
+                  finalBalance >= 0 ? 'text-green-700' : 'text-red-700'
+                }`}
+              >
+                {formatCurrency(finalBalance, currency)}
+              </p>
+              <p
+                className={`text-xs mt-1 ${
+                  finalBalance >= 0 ? 'text-green-700' : 'text-red-700'
+                }`}
+              >
+                {finalBalance >= 0 ? 'Disponible' : 'En déficit'}
+              </p>
             </div>
           </div>
+        </div>
 
-          {/* Action Buttons */}
-          <div className='flex flex-wrap gap-3 mb-6'>
-            <Button
-              onClick={() => {
-                // Asegurar que los gastos fijos estén cargados
-                if (user?.uid && fixedExpenses.length === 0) {
-                  dispatch(loadFixedExpenses(user.uid));
-                }
-                setEditingTransaction(null);
-                setShowExpenseModal(true);
-              }}
-              variant='secondary'
-              size='md'
-              className='flex-1 min-w-[150px]'
-              icon={
-                <svg
-                  className='w-5 h-5'
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M12 4v16m8-8H4'
-                  />
-                </svg>
+        {/* Action Buttons - Responsive */}
+        <div className='flex flex-col sm:flex-row gap-3 mb-6 sm:mb-8'>
+          <Button
+            onClick={() => {
+              if (user?.uid && fixedExpenses.length === 0) {
+                dispatch(loadFixedExpenses(user.uid));
               }
-            >
-              Agregar Gasto
-            </Button>
-            <Button
-              onClick={() => handleOpenIncomeModal()}
-              variant='secondary'
-              size='md'
-              className='flex-1 min-w-[150px]'
-              icon={
-                <svg
-                  className='w-5 h-5'
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M12 4v16m8-8H4'
-                  />
-                </svg>
-              }
-            >
-              Agregar Ingreso
-            </Button>
-            <Button
-              onClick={() => handleOpenSavingsModal()}
-              variant='secondary'
-              size='md'
-              className='flex-1 min-w-[150px]'
-              icon={
-                <svg
-                  className='w-5 h-5'
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-                  />
-                </svg>
-              }
-            >
-              Agregar Ahorro
-            </Button>
-          </div>
+              setEditingTransaction(null);
+              setShowExpenseModal(true);
+            }}
+            variant='secondary'
+            size='md'
+            className='flex-1 sm:flex-initial sm:min-w-[160px]'
+            icon={
+              <svg
+                className='w-5 h-5'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M12 4v16m8-8H4'
+                />
+              </svg>
+            }
+          >
+            <span className='hidden sm:inline'>Agregar Gasto</span>
+            <span className='sm:hidden'>Gasto</span>
+          </Button>
+          <Button
+            onClick={() => handleOpenIncomeModal()}
+            variant='secondary'
+            size='md'
+            className='flex-1 sm:flex-initial sm:min-w-[160px]'
+            icon={
+              <svg
+                className='w-5 h-5'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M12 4v16m8-8H4'
+                />
+              </svg>
+            }
+          >
+            <span className='hidden sm:inline'>Agregar Ingreso</span>
+            <span className='sm:hidden'>Ingreso</span>
+          </Button>
+          <Button
+            onClick={() => handleOpenSavingsModal()}
+            variant='secondary'
+            size='md'
+            className='flex-1 sm:flex-initial sm:min-w-[160px]'
+            icon={
+              <svg
+                className='w-5 h-5'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                />
+              </svg>
+            }
+          >
+            <span className='hidden sm:inline'>Agregar Ahorro</span>
+            <span className='sm:hidden'>Ahorro</span>
+          </Button>
+        </div>
 
-          {/* Transactions Table */}
-          <div className='mt-6'>
-            <h3 className='text-lg font-semibold text-primary-dark mb-4'>
+        {/* Transactions Section */}
+        <div className='mt-6'>
+          <div className='flex items-center justify-between mb-4 sm:mb-6'>
+            <h3 className='text-lg sm:text-xl font-semibold text-primary-dark'>
               Transacciones del Mes
             </h3>
-            {loading ? (
-              <div className='text-center py-12'>
-                <p className='text-zinc-600'>Cargando transacciones...</p>
-              </div>
-            ) : (
-              <div className='overflow-x-auto'>
+            <span className='text-sm text-zinc-600 bg-zinc-100 px-3 py-1 rounded-full'>
+              {allTransactions.length}{' '}
+              {allTransactions.length === 1 ? 'transacción' : 'transacciones'}
+            </span>
+          </div>
+
+          {loading ? (
+            <div className='text-center py-12'>
+              <div className='inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-dark mb-4'></div>
+              <p className='text-zinc-600'>Cargando transacciones...</p>
+            </div>
+          ) : allTransactions.length === 0 ? (
+            <div className='text-center py-12 bg-zinc-50 rounded-xl border-2 border-dashed border-zinc-200'>
+              <svg
+                className='w-16 h-16 text-zinc-400 mx-auto mb-4'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+                />
+              </svg>
+              <p className='text-zinc-600 text-lg font-medium'>
+                No hay transacciones registradas
+              </p>
+              <p className='text-zinc-500 text-sm mt-1'>
+                en {months[selectedMonth]} {selectedYear}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className='hidden lg:block overflow-x-auto'>
                 <table className='w-full'>
                   <thead>
-                    <tr className='border-b border-zinc-200'>
-                      <th className='text-left py-3 px-4 font-semibold text-primary-medium'>
+                    <tr className='border-b-2 border-zinc-300 bg-zinc-50'>
+                      <th className='text-left py-4 px-4 font-semibold text-primary-medium text-sm'>
                         Fecha
                       </th>
-                      <th className='text-left py-3 px-4 font-semibold text-primary-medium'>
+                      <th className='text-left py-4 px-4 font-semibold text-primary-medium text-sm'>
                         Concepto
                       </th>
-                      <th className='text-left py-3 px-4 font-semibold text-primary-medium'>
+                      <th className='text-left py-4 px-4 font-semibold text-primary-medium text-sm'>
                         Tipo
                       </th>
-                      <th className='text-left py-3 px-4 font-semibold text-primary-medium'>
+                      <th className='text-left py-4 px-4 font-semibold text-primary-medium text-sm'>
                         Medio de Pago
                       </th>
-                      <th className='text-right py-3 px-4 font-semibold text-primary-medium'>
-                        Valor Esperado
+                      <th className='text-right py-4 px-4 font-semibold text-primary-medium text-sm'>
+                        Esperado
                       </th>
-                      <th className='text-right py-3 px-4 font-semibold text-primary-medium'>
-                        Valor Real
+                      <th className='text-right py-4 px-4 font-semibold text-primary-medium text-sm'>
+                        Real
                       </th>
-                      <th className='text-center py-3 px-4 font-semibold text-primary-medium w-24'>
+                      <th className='text-center py-4 px-4 font-semibold text-primary-medium text-sm w-24'>
                         Acciones
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {allTransactions.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className='py-12 text-center text-zinc-600'
+                    {allTransactions.map((transaction) => {
+                      const isPending = Boolean(
+                        transaction.id?.startsWith('pending-')
+                      );
+                      return (
+                        <tr
+                          key={transaction.id}
+                          className={`border-b border-zinc-200 hover:bg-zinc-50 transition-colors ${
+                            isPending ? 'bg-amber-50/50' : ''
+                          }`}
                         >
-                          No hay transacciones registradas en{' '}
-                          {months[selectedMonth]} {selectedYear}
-                        </td>
-                      </tr>
-                    ) : (
-                      allTransactions.map((transaction) => {
-                        // Solo mostrar acciones para transacciones reales (no pendientes)
-                        const isPending =
-                          transaction.id?.startsWith('pending-');
-                        return (
-                          <tr
-                            key={transaction.id}
-                            className='border-b border-zinc-200 hover:bg-neutral-light transition-colors'
-                          >
-                            <td className='py-3 px-4 text-zinc-600'>
-                              {formatDate(transaction.date)}
-                            </td>
-                            <td className='py-3 px-4 text-zinc-800'>
-                              {transaction.concept}
-                            </td>
-                            <td className='py-3 px-4 text-zinc-600'>
-                              {transaction.type === 'fixed_expense'
-                                ? 'Gasto Fijo'
-                                : transaction.type === 'expected_income'
-                                ? 'Ingreso Esperado'
-                                : transaction.type === 'unexpected_income'
-                                ? 'Ingreso Inesperado'
-                                : transaction.type === 'savings'
-                                ? 'Ahorro'
-                                : 'Gasto'}
-                            </td>
-                            <td className='py-3 px-4 text-zinc-600'>
-                              {transaction.paymentMethod}
-                            </td>
-                            <td className='py-3 px-4 text-right text-zinc-500'>
-                              {transaction.expectedAmount !== null &&
-                              transaction.expectedAmount !== undefined
-                                ? formatCurrency(
-                                    transaction.expectedAmount,
-                                    currency
-                                  )
-                                : '-'}
-                            </td>
-                            <td
-                              className={`py-3 px-4 text-right font-semibold ${
-                                transaction.type === 'expected_income' ||
-                                transaction.type === 'unexpected_income'
-                                  ? 'text-green-600'
-                                  : 'text-red-600'
-                              }`}
-                            >
-                              {transaction.type === 'expected_income' ||
-                              transaction.type === 'unexpected_income'
-                                ? '+'
-                                : '-'}
-                              {formatCurrency(transaction.value, currency)}
-                            </td>
-                            <td className='py-3 px-4 text-center w-24'>
-                              {!isPending && transaction.id ? (
-                                <div className='flex justify-center items-center gap-1 sm:gap-2'>
-                                  <Button
-                                    onClick={() => {
-                                      // Solo editar si es una transacción real (no pendiente)
-                                      if (
-                                        transaction.id &&
-                                        !transaction.id.startsWith('pending-')
-                                      ) {
-                                        handleEditTransaction(
-                                          transaction as Transaction
-                                        );
-                                      }
-                                    }}
-                                    variant='ghost'
-                                    size='sm'
-                                    icon={
-                                      <svg
-                                        className='w-4 h-4'
-                                        fill='none'
-                                        stroke='currentColor'
-                                        viewBox='0 0 24 24'
-                                      >
-                                        <path
-                                          strokeLinecap='round'
-                                          strokeLinejoin='round'
-                                          strokeWidth={2}
-                                          d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
-                                        />
-                                      </svg>
-                                    }
-                                    iconOnly
-                                  />
-                                  <Button
-                                    onClick={() =>
-                                      transaction.id &&
-                                      handleDeleteTransaction(transaction.id)
-                                    }
-                                    variant='ghost'
-                                    size='sm'
-                                    icon={
-                                      <svg
-                                        className='w-4 h-4'
-                                        fill='none'
-                                        stroke='currentColor'
-                                        viewBox='0 0 24 24'
-                                      >
-                                        <path
-                                          strokeLinecap='round'
-                                          strokeLinejoin='round'
-                                          strokeWidth={2}
-                                          d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
-                                        />
-                                      </svg>
-                                    }
-                                    iconOnly
-                                  />
-                                </div>
-                              ) : (
-                                <span className='inline-block w-full'>
-                                  &nbsp;
+                          <td className='py-4 px-4 text-zinc-700 text-sm'>
+                            {formatDate(transaction.date)}
+                          </td>
+                          <td className='py-4 px-4'>
+                            <div className='flex items-center gap-2'>
+                              <span className='font-medium text-zinc-900'>
+                                {transaction.concept}
+                              </span>
+                              {isPending && (
+                                <span className='text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-300'>
+                                  Pendiente
                                 </span>
                               )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
+                            </div>
+                          </td>
+                          <td className='py-4 px-4'>
+                            <span
+                              className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getTransactionTypeColor(
+                                transaction.type,
+                                isPending
+                              )}`}
+                            >
+                              {getTransactionTypeLabel(transaction.type)}
+                            </span>
+                          </td>
+                          <td className='py-4 px-4 text-zinc-600 text-sm'>
+                            {transaction.paymentMethod}
+                          </td>
+                          <td className='py-4 px-4 text-right text-zinc-500 text-sm'>
+                            {transaction.expectedAmount !== null &&
+                            transaction.expectedAmount !== undefined
+                              ? formatCurrency(
+                                  transaction.expectedAmount,
+                                  currency
+                                )
+                              : '-'}
+                          </td>
+                          <td
+                            className={`py-4 px-4 text-right font-semibold text-sm ${
+                              transaction.type === 'expected_income' ||
+                              transaction.type === 'unexpected_income'
+                                ? 'text-green-600'
+                                : 'text-red-600'
+                            }`}
+                          >
+                            {transaction.type === 'expected_income' ||
+                            transaction.type === 'unexpected_income'
+                              ? '+'
+                              : '-'}
+                            {formatCurrency(transaction.value, currency)}
+                          </td>
+                          <td className='py-4 px-4 text-center'>
+                            {!isPending && transaction.id ? (
+                              <div className='flex justify-center items-center gap-2'>
+                                <Button
+                                  onClick={() => {
+                                    if (
+                                      transaction.id &&
+                                      !transaction.id.startsWith('pending-')
+                                    ) {
+                                      handleEditTransaction(
+                                        transaction as Transaction
+                                      );
+                                    }
+                                  }}
+                                  variant='ghost'
+                                  size='sm'
+                                  icon={
+                                    <svg
+                                      className='w-4 h-4'
+                                      fill='none'
+                                      stroke='currentColor'
+                                      viewBox='0 0 24 24'
+                                    >
+                                      <path
+                                        strokeLinecap='round'
+                                        strokeLinejoin='round'
+                                        strokeWidth={2}
+                                        d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                                      />
+                                    </svg>
+                                  }
+                                  iconOnly
+                                />
+                                <Button
+                                  onClick={() =>
+                                    transaction.id &&
+                                    handleDeleteTransaction(transaction.id)
+                                  }
+                                  variant='ghost'
+                                  size='sm'
+                                  icon={
+                                    <svg
+                                      className='w-4 h-4'
+                                      fill='none'
+                                      stroke='currentColor'
+                                      viewBox='0 0 24 24'
+                                    >
+                                      <path
+                                        strokeLinecap='round'
+                                        strokeLinejoin='round'
+                                        strokeWidth={2}
+                                        d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+                                      />
+                                    </svg>
+                                  }
+                                  iconOnly
+                                />
+                              </div>
+                            ) : (
+                              <span className='text-zinc-400 text-xs'>
+                                Pendiente
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
-        </MonthTabs>
+
+              {/* Mobile/Tablet Card View */}
+              <div className='lg:hidden space-y-3'>
+                {allTransactions.map((transaction) => {
+                  const isPending = Boolean(
+                    transaction.id?.startsWith('pending-')
+                  );
+                  return (
+                    <div
+                      key={transaction.id}
+                      className={`bg-white border-2 rounded-xl p-4 shadow-sm transition-all ${
+                        isPending
+                          ? 'border-amber-300 bg-amber-50/30'
+                          : 'border-zinc-200 hover:border-primary-light hover:shadow-md'
+                      }`}
+                    >
+                      <div className='flex items-start justify-between mb-3'>
+                        <div className='flex-1'>
+                          <div className='flex items-center gap-2 mb-2'>
+                            <h4 className='font-semibold text-zinc-900 text-base'>
+                              {transaction.concept}
+                            </h4>
+                            {isPending && (
+                              <span className='text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-300'>
+                                Pendiente
+                              </span>
+                            )}
+                          </div>
+                          <div className='flex flex-wrap items-center gap-2'>
+                            <span
+                              className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium border ${getTransactionTypeColor(
+                                transaction.type,
+                                isPending
+                              )}`}
+                            >
+                              {getTransactionTypeLabel(transaction.type)}
+                            </span>
+                            <span className='text-xs text-zinc-500'>
+                              {formatDate(transaction.date)}
+                            </span>
+                            {transaction.paymentMethod !== '-' && (
+                              <span className='text-xs text-zinc-500'>
+                                • {transaction.paymentMethod}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className='grid grid-cols-2 gap-3 mb-3 pt-3 border-t border-zinc-200'>
+                        <div>
+                          <p className='text-xs text-zinc-500 mb-1'>
+                            Valor Esperado
+                          </p>
+                          <p className='text-sm font-medium text-zinc-700'>
+                            {transaction.expectedAmount !== null &&
+                            transaction.expectedAmount !== undefined
+                              ? formatCurrency(
+                                  transaction.expectedAmount,
+                                  currency
+                                )
+                              : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className='text-xs text-zinc-500 mb-1'>
+                            Valor Real
+                          </p>
+                          <p
+                            className={`text-sm font-bold ${
+                              transaction.type === 'expected_income' ||
+                              transaction.type === 'unexpected_income'
+                                ? 'text-green-600'
+                                : 'text-red-600'
+                            }`}
+                          >
+                            {transaction.type === 'expected_income' ||
+                            transaction.type === 'unexpected_income'
+                              ? '+'
+                              : '-'}
+                            {formatCurrency(transaction.value, currency)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {!isPending && transaction.id && (
+                        <div className='flex justify-end gap-2 pt-3 border-t border-zinc-200'>
+                          <Button
+                            onClick={() => {
+                              if (
+                                transaction.id &&
+                                !transaction.id.startsWith('pending-')
+                              ) {
+                                handleEditTransaction(
+                                  transaction as Transaction
+                                );
+                              }
+                            }}
+                            variant='ghost'
+                            size='sm'
+                            className='!px-3'
+                            icon={
+                              <svg
+                                className='w-4 h-4'
+                                fill='none'
+                                stroke='currentColor'
+                                viewBox='0 0 24 24'
+                              >
+                                <path
+                                  strokeLinecap='round'
+                                  strokeLinejoin='round'
+                                  strokeWidth={2}
+                                  d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                                />
+                              </svg>
+                            }
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            onClick={() =>
+                              transaction.id &&
+                              handleDeleteTransaction(transaction.id)
+                            }
+                            variant='ghost'
+                            size='sm'
+                            className='!px-3 text-red-600 hover:text-red-700 hover:bg-red-50'
+                            icon={
+                              <svg
+                                className='w-4 h-4'
+                                fill='none'
+                                stroke='currentColor'
+                                viewBox='0 0 24 24'
+                              >
+                                <path
+                                  strokeLinecap='round'
+                                  strokeLinejoin='round'
+                                  strokeWidth={2}
+                                  d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+                                />
+                              </svg>
+                            }
+                          >
+                            Eliminar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Modal para Ingreso */}

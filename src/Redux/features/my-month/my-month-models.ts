@@ -81,4 +81,7 @@ export interface MyMonthState {
   loading: boolean;
   error: string | null;
   currentMonthPeriod: string | null; // Periodo del mes actual basado en fecha de corte
+  selectedMonth: number; // Mes seleccionado (0-11)
+  selectedYear: number; // Año seleccionado
+  isInitialized: boolean; // Si ya se inicializó con la configuración del usuario
 }
