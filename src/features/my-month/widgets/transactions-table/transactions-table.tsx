@@ -4,14 +4,14 @@ import React from 'react';
 import firebaseApp from 'firebase/app';
 import { Button } from '@/components/ui';
 import { formatCurrency } from '@/utils/currency';
-import type { Transaction } from '@/Redux/features/my-month/my-month-models';
+import type { Transaction, TransactionType } from '@/Redux/features/my-month/my-month-models';
 import type { TransactionFilter } from '../transaction-filters';
 
 interface TransactionWithPending extends Transaction {
   id?: string;
   concept: string;
   date: firebaseApp.firestore.Timestamp;
-  type: string;
+  type: TransactionType;
   paymentMethod: string;
   expectedAmount?: number;
   value: number;
@@ -43,7 +43,7 @@ const months = [
   'Diciembre',
 ];
 
-const getTransactionTypeLabel = (type: string): string => {
+const getTransactionTypeLabel = (type: TransactionType): string => {
   const types: Record<string, string> = {
     fixed_expense: 'Gasto Fijo',
     regular_expense: 'Gasto',
@@ -55,7 +55,7 @@ const getTransactionTypeLabel = (type: string): string => {
 };
 
 const getTransactionTypeColor = (
-  type: string,
+  type: TransactionType,
   isPending: boolean
 ): string => {
   if (isPending) return 'bg-amber-100 text-amber-800 border-amber-300';
