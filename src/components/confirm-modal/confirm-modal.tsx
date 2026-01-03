@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Button } from './button';
+import { Button } from '@/components/ui';
 
 interface ConfirmModalContextType {
   showConfirm: (options: ConfirmOptions) => Promise<boolean>;

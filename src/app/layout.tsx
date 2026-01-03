@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import DirectionProvider from '@/components/DirectionProvider';
-import MountedProvider from '@/components/MountedProvider';
+import DirectionProvider from '@/providers/DirectionProvider';
+import MountedProvider from '@/providers/MountedProvider';
 import ReduxProvider from '@/Redux/providers/ReduxProvider';
-import { ConfirmModalProvider } from '@/components/ui';
+import { ConfirmModalProvider } from '@/components/confirm-modal';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

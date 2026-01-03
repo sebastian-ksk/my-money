@@ -10,15 +10,14 @@ const MountedProvider: React.FC<MountedProviderProps> = ({ children }) => {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    setTimeout(() => {
+      setMounted(true);
+    }, 100);
   }, []);
 
   if (!mounted) {
     return (
-      <div
-        className='min-h-screen flex items-center justify-center'
-        style={{ backgroundColor: '#F2F2F2' }}
-      >
+      <div className='min-h-screen flex items-center justify-center bg-neutral-light'>
         <p style={{ color: '#666' }}>Cargando...</p>
       </div>
     );
