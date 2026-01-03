@@ -23,41 +23,31 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     // Detectar si los children están realmente visibles
-    // Si tiene 'hidden' sin 'sm:inline', no está visible en mobile
-    const hasVisibleChildren = React.Children.toArray(children).some(
-      (child) => {
-        if (React.isValidElement(child)) {
-          const props = child.props as { className?: string };
-          if (props?.className && typeof props.className === 'string') {
-            const className = props.className;
-            // Si tiene 'hidden', solo cuenta como visible si tiene 'sm:inline'
-            if (className.includes('hidden')) {
-              return className.includes('sm:inline');
-            }
-            return true;
-          }
-        }
-        return Boolean(child);
-      }
-    );
+    // En mobile, siempre mostrar el texto si existe (aunque tenga hidden sm:inline)
+    // En desktop, respetar las clases CSS
+    const hasChildren = Boolean(children);
 
-    const isIconOnly = iconOnly || (!hasVisibleChildren && icon);
+    // Solo considerar iconOnly si:
+    // 1. Se pasa explícitamente iconOnly=true
+    // 2. No hay children en absoluto
+    const isIconOnly = iconOnly || (!hasChildren && icon);
 
-    const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    const baseStyles = `inline-flex items-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+      isIconOnly ? 'justify-center' : 'justify-start'
+    }`;
 
     const roundedStyles = 'rounded-full';
 
     const sizeStyles = {
       sm: isIconOnly
         ? 'w-8 h-8 sm:w-9 sm:h-9'
-        : 'px-3 py-1.5 text-sm sm:px-4 sm:py-2',
+        : 'px-2 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm',
       md: isIconOnly
         ? 'w-10 h-10 sm:w-12 sm:h-12'
-        : 'px-4 py-2 text-base sm:px-6 sm:py-2.5',
+        : 'px-2.5 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-base',
       lg: isIconOnly
         ? 'w-12 h-12 sm:w-14 sm:h-14'
-        : 'px-6 py-3 text-lg sm:px-8 sm:py-3.5',
+        : 'px-3 py-2 text-sm sm:px-6 sm:py-3 sm:text-lg',
     };
 
     const variantStyles = {
@@ -105,19 +95,23 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <div className='relative inline-flex group'>
         <button ref={ref} className={combinedClassName} {...props}>
-          {icon && (
-            <span className='inline-flex items-center justify-center w-full h-full'>
-              <span
-                className={
-                  isIconOnly ? iconSizeStyles[size] : 'w-4 h-4 sm:w-5 sm:h-5'
-                }
-              >
-                {icon}
+          {isIconOnly ? (
+            icon && (
+              <span className='inline-flex items-center justify-center w-full h-full'>
+                <span className={iconSizeStyles[size]}>{icon}</span>
               </span>
-            </span>
-          )}
-          {children && !isIconOnly && (
-            <span className={icon ? 'ml-2' : ''}>{children}</span>
+            )
+          ) : (
+            <>
+              {icon && (
+                <span className='inline-flex items-center justify-center flex-shrink-0'>
+                  <span className='w-4 h-4 sm:w-5 sm:h-5'>{icon}</span>
+                </span>
+              )}
+              {children && (
+                <span className={icon ? 'ml-2' : ''}>{children}</span>
+              )}
+            </>
           )}
         </button>
         {showTooltip && (

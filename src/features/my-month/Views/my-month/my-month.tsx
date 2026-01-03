@@ -366,28 +366,31 @@ const MyMonth = () => {
             }}
             variant='secondary'
             size='md'
-            className='w-12 h-12 sm:w-auto sm:min-w-[160px] sm:px-6 sm:py-2.5'
-            icon={<FaCreditCard className='w-6 h-6' />}
+            className='sm:min-w-[160px]'
+            icon={<FaCreditCard className='w-4 h-4 sm:w-5 sm:h-5' />}
           >
-            <span className='hidden sm:inline sm:ml-2'>Agregar Gasto</span>
+            <span className='sm:hidden'>Gasto</span>
+            <span className='hidden sm:inline'>Agregar Gasto</span>
           </Button>
           <Button
             onClick={() => handleOpenIncomeModal()}
             variant='secondary'
             size='md'
-            className='w-12 h-12 sm:w-auto sm:min-w-[160px] sm:px-6 sm:py-2.5'
-            icon={<FaDollarSign className='w-6 h-6' />}
+            className='sm:min-w-[160px]'
+            icon={<FaDollarSign className='w-4 h-4 sm:w-5 sm:h-5' />}
           >
-            <span className='hidden sm:inline sm:ml-2'>Agregar Ingreso</span>
+            <span className='sm:hidden'>Ingreso</span>
+            <span className='hidden sm:inline'>Agregar Ingreso</span>
           </Button>
           <Button
             onClick={() => handleOpenSavingsModal()}
             variant='secondary'
             size='md'
-            className='w-12 h-12 sm:w-auto sm:min-w-[160px] sm:px-6 sm:py-2.5'
-            icon={<FaPiggyBank className='w-6 h-6' />}
+            className='sm:min-w-[160px]'
+            icon={<FaPiggyBank className='w-4 h-4 sm:w-5 sm:h-5' />}
           >
-            <span className='hidden sm:inline sm:ml-2'>Agregar Ahorro</span>
+            <span className='sm:hidden'>Ahorro</span>
+            <span className='hidden sm:inline'>Agregar Ahorro</span>
           </Button>
         </div>
 
