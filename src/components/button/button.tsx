@@ -22,7 +22,26 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const isIconOnly = iconOnly || (!children && icon);
+    // Detectar si los children están realmente visibles
+    // Si tiene 'hidden' sin 'sm:inline', no está visible en mobile
+    const hasVisibleChildren = React.Children.toArray(children).some(
+      (child) => {
+        if (React.isValidElement(child)) {
+          const props = child.props as { className?: string };
+          if (props?.className && typeof props.className === 'string') {
+            const className = props.className;
+            // Si tiene 'hidden', solo cuenta como visible si tiene 'sm:inline'
+            if (className.includes('hidden')) {
+              return className.includes('sm:inline');
+            }
+            return true;
+          }
+        }
+        return Boolean(child);
+      }
+    );
+
+    const isIconOnly = iconOnly || (!hasVisibleChildren && icon);
 
     const baseStyles =
       'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
@@ -53,33 +72,61 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const iconSizeStyles = {
-      sm: 'w-4 h-4 sm:w-5 sm:h-5',
-      md: 'w-5 h-5 sm:w-6 sm:h-6',
-      lg: 'w-6 h-6 sm:w-7 sm:h-7',
+      sm: 'w-5 h-5 sm:w-6 sm:h-6',
+      md: 'w-6 h-6 sm:w-7 sm:h-7',
+      lg: 'w-7 h-7 sm:w-8 sm:h-8',
     };
 
     const combinedClassName =
       `${baseStyles} ${roundedStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`.trim();
 
+    // Extraer el texto del label para el tooltip
+    const getLabelText = (): string => {
+      if (!children) return '';
+      const childrenArray = React.Children.toArray(children);
+      return childrenArray
+        .map((child) => {
+          if (typeof child === 'string') return child;
+          if (React.isValidElement(child)) {
+            const props = child.props as { children?: React.ReactNode };
+            if (props?.children && typeof props.children === 'string') {
+              return props.children;
+            }
+          }
+          return '';
+        })
+        .join('')
+        .trim();
+    };
+
+    const labelText = getLabelText();
+    const showTooltip = isIconOnly && labelText;
+
     return (
-      <button ref={ref} className={combinedClassName} {...props}>
-        {icon && (
-          <span
-            className={`inline-flex items-center justify-center ${
-              children && !isIconOnly ? 'mr-2' : ''
-            }`}
-          >
-            <span
-              className={
-                isIconOnly ? iconSizeStyles[size] : 'w-4 h-4 sm:w-5 sm:h-5'
-              }
-            >
-              {icon}
+      <div className='relative inline-flex group'>
+        <button ref={ref} className={combinedClassName} {...props}>
+          {icon && (
+            <span className='inline-flex items-center justify-center w-full h-full'>
+              <span
+                className={
+                  isIconOnly ? iconSizeStyles[size] : 'w-4 h-4 sm:w-5 sm:h-5'
+                }
+              >
+                {icon}
+              </span>
             </span>
-          </span>
+          )}
+          {children && !isIconOnly && (
+            <span className={icon ? 'ml-2' : ''}>{children}</span>
+          )}
+        </button>
+        {showTooltip && (
+          <div className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50'>
+            {labelText}
+            <div className='absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-zinc-900'></div>
+          </div>
         )}
-        {children && !isIconOnly && <span>{children}</span>}
-      </button>
+      </div>
     );
   }
 );

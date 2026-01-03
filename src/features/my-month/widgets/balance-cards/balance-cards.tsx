@@ -23,14 +23,14 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
 }) => {
   return (
     <div className='mb-6 sm:mb-8'>
-      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4'>
+      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4'>
         {/* Card: Saldo Inicial */}
-        <div className='bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 sm:p-5 border border-blue-200 shadow-sm'>
-          <div className='flex items-start justify-between mb-2'>
-            <div className='flex items-center gap-2'>
-              <div className='p-2 bg-blue-200 rounded-lg'>
+        <div className='bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 sm:p-4 lg:p-5 border border-blue-200 shadow-sm min-w-0'>
+          <div className='flex items-start justify-between mb-2 gap-2'>
+            <div className='flex items-center gap-2 min-w-0 flex-1'>
+              <div className='p-1.5 sm:p-2 bg-blue-200 rounded-lg flex-shrink-0'>
                 <svg
-                  className='w-5 h-5 text-blue-700'
+                  className='w-4 h-4 sm:w-5 sm:h-5 text-blue-700'
                   fill='none'
                   stroke='currentColor'
                   viewBox='0 0 24 24'
@@ -43,7 +43,7 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
                   />
                 </svg>
               </div>
-              <h3 className='text-sm font-medium text-blue-900'>
+              <h3 className='text-xs sm:text-sm font-medium text-blue-900 truncate'>
                 Saldo Inicial
               </h3>
             </div>
@@ -51,7 +51,7 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
               onClick={onEditLiquidity}
               variant='ghost'
               size='sm'
-              className='!p-1'
+              className='!p-1 flex-shrink-0'
               icon={
                 <svg
                   className='w-4 h-4'
@@ -70,18 +70,18 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
               iconOnly
             />
           </div>
-          <p className='text-2xl sm:text-3xl font-bold text-blue-900'>
+          <p className='text-xl sm:text-2xl lg:text-3xl font-bold text-blue-900 break-words overflow-hidden'>
             {formatCurrency(displayLiquidity ?? 0, currency)}
           </p>
           <p className='text-xs text-blue-700 mt-1'>Del mes anterior</p>
         </div>
 
         {/* Card: Gastos */}
-        <div className='bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 sm:p-5 border border-red-200 shadow-sm'>
+        <div className='bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-3 sm:p-4 lg:p-5 border border-red-200 shadow-sm min-w-0'>
           <div className='flex items-center gap-2 mb-2'>
-            <div className='p-2 bg-red-200 rounded-lg'>
+            <div className='p-1.5 sm:p-2 bg-red-200 rounded-lg flex-shrink-0'>
               <svg
-                className='w-5 h-5 text-red-700'
+                className='w-4 h-4 sm:w-5 sm:h-5 text-red-700'
                 fill='none'
                 stroke='currentColor'
                 viewBox='0 0 24 24'
@@ -94,20 +94,22 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
                 />
               </svg>
             </div>
-            <h3 className='text-sm font-medium text-red-900'>Gastos</h3>
+            <h3 className='text-xs sm:text-sm font-medium text-red-900'>
+              Gastos
+            </h3>
           </div>
-          <p className='text-2xl sm:text-3xl font-bold text-red-700'>
+          <p className='text-xl sm:text-2xl lg:text-3xl font-bold text-red-700 break-words overflow-hidden'>
             {formatCurrency(totalExpenses, currency)}
           </p>
           <p className='text-xs text-red-700 mt-1'>Este mes</p>
         </div>
 
         {/* Card: Ingresos */}
-        <div className='bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 sm:p-5 border border-green-200 shadow-sm'>
+        <div className='bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 sm:p-4 lg:p-5 border border-green-200 shadow-sm min-w-0'>
           <div className='flex items-center gap-2 mb-2'>
-            <div className='p-2 bg-green-200 rounded-lg'>
+            <div className='p-1.5 sm:p-2 bg-green-200 rounded-lg flex-shrink-0'>
               <svg
-                className='w-5 h-5 text-green-700'
+                className='w-4 h-4 sm:w-5 sm:h-5 text-green-700'
                 fill='none'
                 stroke='currentColor'
                 viewBox='0 0 24 24'
@@ -120,9 +122,11 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
                 />
               </svg>
             </div>
-            <h3 className='text-sm font-medium text-green-900'>Ingresos</h3>
+            <h3 className='text-xs sm:text-sm font-medium text-green-900'>
+              Ingresos
+            </h3>
           </div>
-          <p className='text-2xl sm:text-3xl font-bold text-green-700'>
+          <p className='text-xl sm:text-2xl lg:text-3xl font-bold text-green-700 break-words overflow-hidden'>
             {formatCurrency(totalIncomes, currency)}
           </p>
           <p className='text-xs text-green-700 mt-1'>Este mes</p>
@@ -130,7 +134,7 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
 
         {/* Card: Balance Final */}
         <div
-          className={`rounded-xl p-4 sm:p-5 border shadow-sm ${
+          className={`rounded-xl p-3 sm:p-4 lg:p-5 border shadow-sm min-w-0 ${
             finalBalance >= 0
               ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'
               : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
@@ -138,12 +142,12 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
         >
           <div className='flex items-center gap-2 mb-2'>
             <div
-              className={`p-2 rounded-lg ${
+              className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${
                 finalBalance >= 0 ? 'bg-green-200' : 'bg-red-200'
               }`}
             >
               <svg
-                className={`w-5 h-5 ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 ${
                   finalBalance >= 0 ? 'text-green-700' : 'text-red-700'
                 }`}
                 fill='none'
@@ -159,7 +163,7 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
               </svg>
             </div>
             <h3
-              className={`text-sm font-medium ${
+              className={`text-xs sm:text-sm font-medium ${
                 finalBalance >= 0 ? 'text-green-900' : 'text-red-900'
               }`}
             >
@@ -167,7 +171,7 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
             </h3>
           </div>
           <p
-            className={`text-2xl sm:text-3xl font-bold ${
+            className={`text-xl sm:text-2xl lg:text-3xl font-bold break-words overflow-hidden ${
               finalBalance >= 0 ? 'text-green-700' : 'text-red-700'
             }`}
           >
@@ -185,4 +189,3 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
     </div>
   );
 };
-

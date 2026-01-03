@@ -7,12 +7,13 @@ import ExpenseModal from '@/features/my-month/widgets/expense-modal/expense-moda
 import IncomeModal from '@/features/my-month/widgets/income-modal/income-modal';
 import SavingsModal from '@/features/my-month/widgets/savings-modal/savings-modal';
 import { BalanceCards } from '@/features/my-month/widgets/balance-cards';
-import { ActionButtons } from '@/features/my-month/widgets/action-buttons';
 import {
   TransactionFilters,
   type TransactionFilter,
 } from '@/features/my-month/widgets/transaction-filters';
 import { TransactionsTable } from '@/features/my-month/widgets/transactions-table';
+import { Button } from '@/components/ui';
+import { FaCreditCard, FaDollarSign, FaPiggyBank } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
 import { selectUser } from '@/Redux/features/auth';
 import {
@@ -354,6 +355,42 @@ const MyMonth = () => {
   return (
     <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6'>
       <div className='bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8'>
+        <div className='flex flex-row gap-3 mb-6 sm:mb-8 justify-center sm:justify-start'>
+          <Button
+            onClick={() => {
+              if (user?.uid && fixedExpenses.length === 0) {
+                dispatch(loadFixedExpenses(user.uid));
+              }
+              setEditingTransaction(null);
+              setShowExpenseModal(true);
+            }}
+            variant='secondary'
+            size='md'
+            className='w-12 h-12 sm:w-auto sm:min-w-[160px] sm:px-6 sm:py-2.5'
+            icon={<FaCreditCard className='w-6 h-6' />}
+          >
+            <span className='hidden sm:inline sm:ml-2'>Agregar Gasto</span>
+          </Button>
+          <Button
+            onClick={() => handleOpenIncomeModal()}
+            variant='secondary'
+            size='md'
+            className='w-12 h-12 sm:w-auto sm:min-w-[160px] sm:px-6 sm:py-2.5'
+            icon={<FaDollarSign className='w-6 h-6' />}
+          >
+            <span className='hidden sm:inline sm:ml-2'>Agregar Ingreso</span>
+          </Button>
+          <Button
+            onClick={() => handleOpenSavingsModal()}
+            variant='secondary'
+            size='md'
+            className='w-12 h-12 sm:w-auto sm:min-w-[160px] sm:px-6 sm:py-2.5'
+            icon={<FaPiggyBank className='w-6 h-6' />}
+          >
+            <span className='hidden sm:inline sm:ml-2'>Agregar Ahorro</span>
+          </Button>
+        </div>
+
         <BalanceCards
           displayLiquidity={displayLiquidity}
           totalExpenses={totalExpenses}
@@ -361,18 +398,6 @@ const MyMonth = () => {
           finalBalance={finalBalance}
           currency={currency}
           onEditLiquidity={() => setShowLiquidityModal(true)}
-        />
-
-        <ActionButtons
-          onAddExpense={() => {
-            if (user?.uid && fixedExpenses.length === 0) {
-              dispatch(loadFixedExpenses(user.uid));
-            }
-            setEditingTransaction(null);
-            setShowExpenseModal(true);
-          }}
-          onAddIncome={() => handleOpenIncomeModal()}
-          onAddSavings={() => handleOpenSavingsModal()}
         />
 
         <div className='mt-6'>
