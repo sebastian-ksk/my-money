@@ -79,7 +79,9 @@ export const ConfirmModalProvider: React.FC<ConfirmModalProviderProps> = ({
             {options.title && (
               <h3
                 className={`text-xl font-bold mb-4 ${
-                  options.variant ? variantStyles[options.variant] : 'text-primary-dark'
+                  options.variant
+                    ? variantStyles[options.variant]
+                    : 'text-primary-dark'
                 }`}
               >
                 {options.title}
@@ -110,4 +112,3 @@ export const ConfirmModalProvider: React.FC<ConfirmModalProviderProps> = ({
     </ConfirmModalContext.Provider>
   );
 };
-
