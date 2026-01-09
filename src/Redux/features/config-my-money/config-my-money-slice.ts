@@ -23,6 +23,7 @@ import {
   updateSavingsSource,
   deleteSavingsSource,
 } from './config-my-money-thunks';
+import { logoutUser } from '../auth/auth-thunks';
 import type {
   ConfigMyMoneyState,
   UserConfig,
@@ -244,7 +245,9 @@ const configMyMoneySlice = createSlice({
         state.savingsSources = state.savingsSources.filter(
           (s) => s.id !== action.meta.arg
         );
-      });
+      })
+      // Reset on logout
+      .addCase(logoutUser.fulfilled, () => initialState);
   },
 });
 

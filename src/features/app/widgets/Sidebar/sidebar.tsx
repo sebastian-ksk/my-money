@@ -13,21 +13,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
+import { selectUser } from '@/Redux/features/auth';
+import { logoutUser } from '@/Redux/features/auth/auth-thunks';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: (collapsed: boolean) => void;
-}
-
-interface UserData {
-  uid: string;
-  email: string;
-  displayName: string;
-  photoURL: string;
-  emailVerified: boolean;
-  providerId: string;
 }
 
 const menuItems = [
@@ -45,20 +39,14 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const user = useAppSelector(selectUser);
   const [isMobile, setIsMobile] = useState(false);
   const [internalCollapsed, setInternalCollapsed] = useState(true);
-  const [user, setUser] = useState<UserData | null>(null);
 
   const isCollapsed = onToggleCollapse
     ? externalIsCollapsed
     : internalCollapsed;
-
-  useEffect(() => {
-    const userData = sessionStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -112,10 +100,15 @@ export default function Sidebar({
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('isAuthenticated');
-    router.push('/');
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutUser()).unwrap();
+      router.push('/');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      // Forzar redirección aunque falle
+      router.push('/');
+    }
   };
 
   return (

@@ -400,7 +400,7 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
             <Button
               type='submit'
               variant='secondary'
-              size='md'
+              size='default'
               className='flex-1'
               disabled={
                 !sourceForm.watch('sourceName') ||
@@ -414,7 +414,7 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
                 type='button'
                 onClick={handleCancelEdit}
                 variant='outline'
-                size='md'
+                size='default'
               >
                 Cancelar
               </Button>
@@ -428,7 +428,7 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
           type='button'
           onClick={onClose}
           variant='outline'
-          size='md'
+          size='default'
           className='flex-1'
         >
           Cerrar

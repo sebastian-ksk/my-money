@@ -20,6 +20,7 @@ import {
   deleteMoneySource,
   loadPreviousMonthSources,
 } from './sources-money-thunks';
+import { logoutUser } from '../auth/auth-thunks';
 import type { MyMonthState, Transaction } from './my-month-models';
 
 const currentDate = new Date();
@@ -221,6 +222,21 @@ const myMonthSlice = createSlice({
       // Load Previous Month Sources
       .addCase(loadPreviousMonthSources.fulfilled, (state, action) => {
         // No actualizar el estado, solo se usa para obtener datos del mes anterior
+      })
+      // Reset on logout
+      .addCase(logoutUser.fulfilled, () => {
+        const currentDate = new Date();
+        return {
+          transactions: [],
+          monthlyLiquidity: null,
+          moneySources: [],
+          loading: false,
+          error: null,
+          currentMonthPeriod: null,
+          selectedMonth: currentDate.getMonth(),
+          selectedYear: currentDate.getFullYear(),
+          isInitialized: false,
+        };
       });
   },
 });

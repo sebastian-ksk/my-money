@@ -23,6 +23,9 @@ export const loginUser = createAsyncThunk(
       );
       if (result.user) {
         const userData = await userService.findOrCreateUser(result.user);
+        // Guardar en sessionStorage
+        sessionStorage.setItem('user', JSON.stringify(userData));
+        sessionStorage.setItem('isAuthenticated', 'true');
         return userData;
       }
       throw new Error('No se pudo obtener información del usuario');
@@ -42,6 +45,9 @@ export const registerUser = createAsyncThunk(
       );
       if (result.user) {
         const userData = await userService.findOrCreateUser(result.user);
+        // Guardar en sessionStorage
+        sessionStorage.setItem('user', JSON.stringify(userData));
+        sessionStorage.setItem('isAuthenticated', 'true');
         return userData;
       }
       throw new Error('No se pudo obtener información del usuario');
@@ -59,6 +65,9 @@ export const loginWithGoogle = createAsyncThunk(
       const result = await auth.signInWithPopup(provider);
       if (result.user) {
         const userData = await userService.findOrCreateUser(result.user);
+        // Guardar en sessionStorage
+        sessionStorage.setItem('user', JSON.stringify(userData));
+        sessionStorage.setItem('isAuthenticated', 'true');
         return userData;
       }
       throw new Error('No se pudo obtener información del usuario');
@@ -70,6 +79,24 @@ export const loginWithGoogle = createAsyncThunk(
   }
 );
 
-export const logoutUser = createAsyncThunk('auth/logout', async () => {
-  await auth.signOut();
-});
+export const logoutUser = createAsyncThunk(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      // Cerrar sesión en Firebase
+      await auth.signOut();
+      
+      // Limpiar sessionStorage
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('isAuthenticated');
+      sessionStorage.clear();
+      
+      // Limpiar localStorage (redux-persist)
+      localStorage.removeItem('persist:root');
+      
+      return true;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Error al cerrar sesión');
+    }
+  }
+);

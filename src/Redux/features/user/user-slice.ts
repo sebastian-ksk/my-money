@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { logoutUser } from '../auth/auth-thunks';
 
 interface UserState {
   profile: {
@@ -36,9 +37,13 @@ const userSlice = createSlice({
       state.profile = null;
       state.error = null;
     },
+    resetUserState: () => initialState,
+  },
+  extraReducers: (builder) => {
+    builder.addCase(logoutUser.fulfilled, () => initialState);
   },
 });
 
-export const { setProfile, setLoading, setError, clearProfile } =
+export const { setProfile, setLoading, setError, clearProfile, resetUserState } =
   userSlice.actions;
 export const userReducer = userSlice.reducer;

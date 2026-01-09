@@ -319,7 +319,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
               type='button'
               onClick={onClose}
               variant='outline'
-              size='md'
+              size='default'
               className='flex-1'
             >
               Cancelar
@@ -327,7 +327,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
             <Button
               type='submit'
               variant='secondary'
-              size='md'
+              size='default'
               className='flex-1'
               disabled={
                 expenseType === 'fixed'

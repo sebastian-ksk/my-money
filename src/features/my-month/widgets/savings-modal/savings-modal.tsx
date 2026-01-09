@@ -236,7 +236,7 @@ const SavingsModal: React.FC<SavingsModalProps> = ({
             type='button'
             onClick={onClose}
             variant='outline'
-            size='md'
+            size='default'
             className='flex-1'
           >
             Cancelar
@@ -244,7 +244,7 @@ const SavingsModal: React.FC<SavingsModalProps> = ({
           <Button
             type='submit'
             variant='secondary'
-            size='md'
+            size='default'
             className='flex-1'
             disabled={
               !savingsSourceId ||

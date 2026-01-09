@@ -298,7 +298,7 @@ const IncomeModal: React.FC<IncomeModalProps> = ({
             type='button'
             onClick={onClose}
             variant='outline'
-            size='md'
+            size='default'
             className='flex-1'
           >
             Cancelar
@@ -306,7 +306,7 @@ const IncomeModal: React.FC<IncomeModalProps> = ({
           <Button
             type='submit'
             variant='secondary'
-            size='md'
+            size='default'
             className='flex-1'
             disabled={
               expectedIncomeId
