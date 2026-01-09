@@ -8,11 +8,23 @@ import {
   selectUserConfig,
   selectConfigLoading,
 } from '@/Redux/features/config-my-money';
-import { Button } from '@/components/ui';
+import { selectUser } from '@/Redux/features/auth';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { CURRENCIES } from '@/utils/currency';
+
+const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export default function UserConfigSection() {
   const dispatch = useAppDispatch();
+  const user = useAppSelector(selectUser);
   const userConfig = useAppSelector(selectUserConfig);
   const loading = useAppSelector(selectConfigLoading);
   const [formData, setFormData] = useState({
@@ -21,12 +33,10 @@ export default function UserConfigSection() {
   });
 
   useEffect(() => {
-    const userData = sessionStorage.getItem('user');
-    if (userData) {
-      const user = JSON.parse(userData);
+    if (user?.uid) {
       dispatch(loadUserConfig(user.uid));
     }
-  }, [dispatch]);
+  }, [dispatch, user?.uid]);
 
   useEffect(() => {
     if (userConfig) {
@@ -39,10 +49,8 @@ export default function UserConfigSection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const userData = sessionStorage.getItem('user');
-    if (!userData) return;
+    if (!user?.uid) return;
 
-    const user = JSON.parse(userData);
     await dispatch(
       saveUserConfig({
         userId: user.uid,
@@ -52,62 +60,60 @@ export default function UserConfigSection() {
   };
 
   return (
-    <div>
-      <form onSubmit={handleSubmit} className='space-y-4'>
-        <div>
-          <label className='block text-sm font-medium mb-2 text-primary-medium'>
-            Día de Reinicio del Mes (1-31)
-          </label>
-          <input
-            type='number'
-            min='1'
-            max='31'
-            required
-            value={formData.monthResetDay}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                monthResetDay: parseInt(e.target.value) || 1,
-              })
+    <form onSubmit={handleSubmit} className='space-y-6'>
+      <div className='grid sm:grid-cols-2 gap-6'>
+        <div className='space-y-2'>
+          <Label htmlFor='cutoff'>Día de Corte Mensual</Label>
+          <Select
+            value={formData.monthResetDay.toString()}
+            onValueChange={(value) =>
+              setFormData({ ...formData, monthResetDay: parseInt(value) })
             }
-            className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-            placeholder='Ej: 25'
-          />
-          <p className='text-xs text-zinc-600 mt-1'>
-            El mes se reiniciará este día cada mes
-          </p>
-        </div>
-
-        <div>
-          <label className='block text-sm font-medium mb-2 text-primary-medium'>
-            Moneda por Defecto
-          </label>
-          <select
-            value={formData.currency}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                currency: e.target.value,
-              })
-            }
-            className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-black bg-white'
-            required
           >
-            {Object.entries(CURRENCIES).map(([code, currency]) => (
-              <option key={code} value={code}>
-                {currency.name} ({currency.code})
-              </option>
-            ))}
-          </select>
-          <p className='text-xs text-zinc-600 mt-1'>
-            Moneda que se utilizará para mostrar todos los valores monetarios
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {days.map((day) => (
+                <SelectItem key={day} value={day.toString()}>
+                  Día {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className='text-xs text-muted-foreground'>
+            El día en que inicia tu período mensual
           </p>
         </div>
 
-        <Button type='submit' variant='primary' size='md' disabled={loading}>
-          {loading ? 'Guardando...' : 'Guardar Configuración'}
-        </Button>
-      </form>
-    </div>
+        <div className='space-y-2'>
+          <Label htmlFor='currency'>Moneda</Label>
+          <Select
+            value={formData.currency}
+            onValueChange={(value) =>
+              setFormData({ ...formData, currency: value })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(CURRENCIES).map(([code, currency]) => (
+                <SelectItem key={code} value={code}>
+                  {currency.name} ({currency.code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className='text-xs text-muted-foreground'>
+            Moneda para mostrar los valores
+          </p>
+        </div>
+      </div>
+
+      <Button variant='hero' type='submit' disabled={loading}>
+        {loading ? 'Guardando...' : 'Guardar Cambios'}
+      </Button>
+    </form>
   );
 }
