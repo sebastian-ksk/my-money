@@ -29,23 +29,21 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      # Router HTTP con path /my-money (redirige a HTTPS)
-      - "traefik.http.routers.mymoney-http.rule=Host(`sebastianlabs.tech`) && PathPrefix(`/my-money`)"
+      # Router HTTP (redirige a HTTPS)
+      - "traefik.http.routers.mymoney-http.rule=Host(`mymoney.sebastianlabs.tech`)"
       - "traefik.http.routers.mymoney-http.entrypoints=web"
       - "traefik.http.routers.mymoney-http.middlewares=mymoney-redirect"
-      - "traefik.http.routers.mymoney-http.priority=10"
       - "traefik.http.routers.mymoney-http.service=mymoney"
       # Middleware de redirección HTTP a HTTPS
       - "traefik.http.middlewares.mymoney-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.mymoney-redirect.redirectscheme.permanent=true"
-      # Router HTTPS con path /my-money y certificado SSL automático
-      - "traefik.http.routers.mymoney-https.rule=Host(`sebastianlabs.tech`) && PathPrefix(`/my-money`)"
+      # Router HTTPS con certificado SSL automático
+      - "traefik.http.routers.mymoney-https.rule=Host(`mymoney.sebastianlabs.tech`)"
       - "traefik.http.routers.mymoney-https.entrypoints=websecure"
       - "traefik.http.routers.mymoney-https.tls=true"
       - "traefik.http.routers.mymoney-https.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.mymoney-https.priority=10"
       - "traefik.http.routers.mymoney-https.service=mymoney"
-      # Service compartido para ambos routers
+      # Service
       - "traefik.http.services.mymoney.loadbalancer.server.port=3000"
     networks:
       - traefik_network
