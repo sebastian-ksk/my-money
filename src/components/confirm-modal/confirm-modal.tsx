@@ -68,7 +68,7 @@ export const ConfirmModalProvider: React.FC<ConfirmModalProviderProps> = ({
     info: 'text-blue-600',
   };
 
-  const buttonVariant = options.variant === 'danger' ? 'secondary' : 'primary';
+  const buttonVariant = options.variant === 'danger' ? 'destructive' : 'default';
 
   return (
     <ConfirmModalContext.Provider value={{ showConfirm }}>
@@ -93,7 +93,7 @@ export const ConfirmModalProvider: React.FC<ConfirmModalProviderProps> = ({
                 type='button'
                 onClick={handleCancel}
                 variant='outline'
-                size='md'
+                size='default'
               >
                 {options.cancelText || 'Cancelar'}
               </Button>
@@ -101,7 +101,7 @@ export const ConfirmModalProvider: React.FC<ConfirmModalProviderProps> = ({
                 type='button'
                 onClick={handleConfirm}
                 variant={buttonVariant}
-                size='md'
+                size='default'
               >
                 {options.confirmText || 'Confirmar'}
               </Button>
