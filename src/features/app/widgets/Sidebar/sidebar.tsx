@@ -3,6 +3,16 @@
 import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import {
+  LayoutDashboard,
+  Settings,
+  PieChart,
+  MessageCircle,
+  Wallet,
+  LogOut,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -20,57 +30,11 @@ interface UserData {
   providerId: string;
 }
 
-interface MenuItem {
-  label: string;
-  path: string;
-  icon: React.ReactElement;
-}
-
-const menuItems: MenuItem[] = [
-  {
-    label: 'Mi Mes',
-    path: '/my-month',
-    icon: (
-      <svg
-        className='w-5 h-5'
-        fill='none'
-        stroke='currentColor'
-        viewBox='0 0 24 24'
-      >
-        <path
-          strokeLinecap='round'
-          strokeLinejoin='round'
-          strokeWidth={2}
-          d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
-        />
-      </svg>
-    ),
-  },
-  {
-    label: 'Configuración',
-    path: '/config-my-money',
-    icon: (
-      <svg
-        className='w-5 h-5'
-        fill='none'
-        stroke='currentColor'
-        viewBox='0 0 24 24'
-      >
-        <path
-          strokeLinecap='round'
-          strokeLinejoin='round'
-          strokeWidth={2}
-          d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z'
-        />
-        <path
-          strokeLinecap='round'
-          strokeLinejoin='round'
-          strokeWidth={2}
-          d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'
-        />
-      </svg>
-    ),
-  },
+const menuItems = [
+  { path: '/my-month', label: 'Mi Mes', icon: LayoutDashboard },
+  { path: '/dashboard', label: 'Dashboard', icon: PieChart },
+  { path: '/chat', label: 'Chat', icon: MessageCircle },
+  { path: '/config-my-money', label: 'Configuración', icon: Settings },
 ];
 
 export default function Sidebar({
@@ -148,106 +112,144 @@ export default function Sidebar({
     }
   };
 
+  const handleLogout = () => {
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('isAuthenticated');
+    router.push('/');
+  };
+
   return (
     <>
       {/* Overlay para móvil */}
       {isMobile && isOpen && (
         <div
-          className='fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden'
+          className='fixed inset-0 bg-black/50 z-40 lg:hidden'
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 h-screen bg-white transition-all duration-300 ease-in-out z-50 ${
+        className={cn(
+          'fixed lg:sticky top-0 left-0 h-screen bg-sidebar-background border-r border-sidebar-border transition-all duration-300 ease-in-out z-50',
           isOpen || !isMobile
             ? 'translate-x-0'
-            : '-translate-x-full lg:translate-x-0'
-        } ${isCollapsed && !isMobile ? 'w-20' : 'w-64'}`}
+            : '-translate-x-full lg:translate-x-0',
+          isCollapsed && !isMobile ? 'w-20' : 'w-64'
+        )}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         <nav className='h-full flex flex-col overflow-hidden'>
-          {/* User Info */}
+          {/* Header con Logo */}
           <div
-            className={`h-16 flex items-center transition-all duration-300 ${
-              isCollapsed && !isMobile ? 'px-2 justify-center' : 'px-4'
-            }`}
+            className={cn(
+              'p-4 border-b border-sidebar-border transition-all duration-300',
+              isCollapsed && !isMobile ? 'px-2' : ''
+            )}
           >
-            <div
-              className={`flex items-center gap-3 transition-all duration-300 w-full ${
+            <button
+              onClick={() => handleNavigation('/my-month')}
+              className={cn(
+                'flex items-center gap-2 group',
                 isCollapsed && !isMobile ? 'justify-center' : ''
-              }`}
+              )}
             >
-              {user?.photoURL && (
-                <Image
-                  src={user.photoURL}
-                  alt={user.displayName || 'Usuario'}
-                  width={48}
-                  height={48}
-                  className='rounded-full shrink-0'
-                />
+              <div className='w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow group-hover:scale-105 transition-transform shrink-0'>
+                <Wallet className='w-5 h-5 text-primary-foreground' />
+              </div>
+              {(!isCollapsed || isMobile) && (
+                <span className='text-xl font-bold text-gradient'>MyMoney</span>
               )}
-              {(!isCollapsed || isMobile) && user?.displayName && (
-                <div className='min-w-0 flex-1'>
-                  <p
-                    className='font-semibold text-sm truncate'
-                    style={{ color: '#233ED9' }}
-                  >
-                    {user.displayName}
-                  </p>
-                  {user?.email && (
-                    <p className='text-xs truncate' style={{ color: '#666' }}>
-                      {user.email}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+            </button>
           </div>
+
+          {/* User Info */}
+          {user && (
+            <div
+              className={cn(
+                'p-4 border-b border-sidebar-border transition-all duration-300',
+                isCollapsed && !isMobile ? 'px-2' : ''
+              )}
+            >
+              <div
+                className={cn(
+                  'flex items-center gap-3 transition-all duration-300 w-full',
+                  isCollapsed && !isMobile ? 'justify-center' : ''
+                )}
+              >
+                {user.photoURL && (
+                  <Image
+                    src={user.photoURL}
+                    alt={user.displayName || 'Usuario'}
+                    width={40}
+                    height={40}
+                    className='rounded-full shrink-0 ring-2 ring-sidebar-border'
+                  />
+                )}
+                {(!isCollapsed || isMobile) && user.displayName && (
+                  <div className='min-w-0 flex-1'>
+                    <p className='font-semibold text-sm truncate text-sidebar-foreground'>
+                      {user.displayName}
+                    </p>
+                    {user.email && (
+                      <p className='text-xs truncate text-sidebar-foreground/60'>
+                        {user.email}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Menu Items */}
           <div className='flex-1 overflow-y-auto p-4'>
-            <ul className='space-y-2'>
+            {(!isCollapsed || isMobile) && (
+              <p className='text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider mb-3'>
+                Menú Principal
+              </p>
+            )}
+            <nav className='space-y-1'>
               {menuItems.map((item) => {
                 const isActive = pathname === item.path;
                 return (
-                  <li key={item.path}>
-                    <button
-                      onClick={() => handleNavigation(item.path)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                        isActive
-                          ? 'bg-primary-light text-white'
-                          : 'text-gray-700 hover:bg-neutral-light'
-                      } ${
-                        isCollapsed && !isMobile ? 'justify-center px-2' : ''
-                      }`}
-                      style={
-                        isActive
-                          ? {}
-                          : {
-                              color: '#263DBF',
-                            }
-                      }
-                      title={isCollapsed && !isMobile ? item.label : ''}
-                    >
-                      <span
-                        className={`shrink-0 ${isActive ? 'text-white' : ''}`}
-                        style={!isActive ? { color: '#5F72D9' } : {}}
-                      >
-                        {item.icon}
-                      </span>
-                      {(!isCollapsed || isMobile) && (
-                        <span className='font-medium truncate'>
-                          {item.label}
-                        </span>
-                      )}
-                    </button>
-                  </li>
+                  <button
+                    key={item.path}
+                    onClick={() => handleNavigation(item.path)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all',
+                      isActive
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50',
+                      isCollapsed && !isMobile ? 'justify-center px-2' : ''
+                    )}
+                    title={isCollapsed && !isMobile ? item.label : ''}
+                  >
+                    <item.icon className='w-5 h-5 shrink-0' />
+                    {(!isCollapsed || isMobile) && <span>{item.label}</span>}
+                  </button>
                 );
               })}
-            </ul>
+            </nav>
+          </div>
+
+          {/* Footer */}
+          <div className='p-4 border-t border-sidebar-border'>
+            <Button
+              variant='ghost'
+              className={cn(
+                'w-full gap-3 text-muted-foreground hover:text-destructive',
+                isCollapsed && !isMobile
+                  ? 'justify-center px-2'
+                  : 'justify-start'
+              )}
+              onClick={handleLogout}
+              title={isCollapsed && !isMobile ? 'Cerrar Sesión' : ''}
+            >
+              <LogOut className='w-5 h-5 shrink-0' />
+              {(!isCollapsed || isMobile) && <span>Cerrar Sesión</span>}
+            </Button>
           </div>
         </nav>
       </aside>
