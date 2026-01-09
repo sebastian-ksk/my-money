@@ -13,7 +13,8 @@ import type {
   LiquiditySource,
   MonthlyLiquidityState,
 } from '@/Redux/features/my-month/my-month-models';
-import { Button, useConfirm } from '@/components/ui';
+import { Button } from '@/components/ui';
+import { useConfirm } from '@/components/confirm-modal';
 import ModalWithContent from '@/components/modal-with-content';
 import { formatCurrency } from '@/utils/currency';
 import { myMonthService } from '@/services/Firebase/my-month-service';

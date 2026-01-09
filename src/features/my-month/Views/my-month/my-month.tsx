@@ -6,14 +6,29 @@ import LiquidityModal from '@/features/my-month/widgets/liquidity-modal/liquidit
 import ExpenseModal from '@/features/my-month/widgets/expense-modal/expense-modal';
 import IncomeModal from '@/features/my-month/widgets/income-modal/income-modal';
 import SavingsModal from '@/features/my-month/widgets/savings-modal/savings-modal';
-import { BalanceCards } from '@/features/my-month/widgets/balance-cards';
-import {
-  TransactionFilters,
-  type TransactionFilter,
-} from '@/features/my-month/widgets/transaction-filters';
+import { type TransactionFilter } from '@/features/my-month/widgets/transaction-filters';
 import { TransactionsTable } from '@/features/my-month/widgets/transactions-table';
-import { Button } from '@/components/ui';
-import { FaCreditCard, FaDollarSign, FaPiggyBank } from 'react-icons/fa';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Calculator,
+  Calendar,
+  Filter,
+  CreditCard,
+  DollarSign,
+  PiggyBank,
+  Pencil,
+} from 'lucide-react';
+import { BalanceCard } from '@/components/my-month';
 import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
 import { selectUser } from '@/Redux/features/auth';
 import {
@@ -352,11 +367,39 @@ const MyMonth = () => {
     monthPeriod: currentPeriod,
   }));
 
+  // Nombre del mes para mostrar
+  const monthNames = [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ];
+  const displayMonthName = monthNames[selectedMonth];
+
   return (
-    <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6'>
-      <div className='bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8'>
-        <div className='flex flex-row gap-3 mb-6 sm:mb-8 justify-center sm:justify-start'>
+    <div className='container mx-auto px-4 py-8'>
+      {/* Header */}
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8'>
+        <div>
+          <h1 className='text-3xl font-bold'>Mi Mes</h1>
+          <div className='flex items-center gap-2 text-muted-foreground mt-1'>
+            <Calendar className='w-4 h-4' />
+            <span>
+              {displayMonthName} {selectedYear}
+            </span>
+          </div>
+        </div>
+        <div className='flex flex-wrap gap-2'>
           <Button
+            variant='outline'
             onClick={() => {
               if (user?.uid && fixedExpenses.length === 0) {
                 dispatch(loadFixedExpenses(user.uid));
@@ -364,63 +407,113 @@ const MyMonth = () => {
               setEditingTransaction(null);
               setShowExpenseModal(true);
             }}
-            variant='secondary'
-            size='md'
-            className='sm:min-w-[160px]'
-            icon={<FaCreditCard className='w-4 h-4 sm:w-5 sm:h-5' />}
           >
-            <span className='sm:hidden'>Gasto</span>
-            <span className='hidden sm:inline'>Agregar Gasto</span>
+            <CreditCard className='w-4 h-4 mr-2' />
+            <span className='hidden sm:inline'>Agregar</span> Gasto
           </Button>
-          <Button
-            onClick={() => handleOpenIncomeModal()}
-            variant='secondary'
-            size='md'
-            className='sm:min-w-[160px]'
-            icon={<FaDollarSign className='w-4 h-4 sm:w-5 sm:h-5' />}
-          >
-            <span className='sm:hidden'>Ingreso</span>
-            <span className='hidden sm:inline'>Agregar Ingreso</span>
+          <Button variant='outline' onClick={() => handleOpenIncomeModal()}>
+            <DollarSign className='w-4 h-4 mr-2' />
+            <span className='hidden sm:inline'>Agregar</span> Ingreso
           </Button>
-          <Button
-            onClick={() => handleOpenSavingsModal()}
-            variant='secondary'
-            size='md'
-            className='sm:min-w-[160px]'
-            icon={<FaPiggyBank className='w-4 h-4 sm:w-5 sm:h-5' />}
-          >
-            <span className='sm:hidden'>Ahorro</span>
-            <span className='hidden sm:inline'>Agregar Ahorro</span>
+          <Button variant='outline' onClick={() => handleOpenSavingsModal()}>
+            <PiggyBank className='w-4 h-4 mr-2' />
+            <span className='hidden sm:inline'>Agregar</span> Ahorro
           </Button>
         </div>
+      </div>
 
-        <BalanceCards
-          displayLiquidity={displayLiquidity}
-          totalExpenses={totalExpenses}
-          totalIncomes={totalIncomes}
-          finalBalance={finalBalance}
-          currency={currency}
-          onEditLiquidity={() => setShowLiquidityModal(true)}
+      {/* Balance Cards */}
+      <div className='grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8'>
+        <div className='relative'>
+          <BalanceCard
+            title='Liquidez Inicial'
+            amount={displayLiquidity}
+            icon={<Wallet className='w-5 h-5 text-foreground' />}
+            subtitle='Inicio del período'
+          />
+          <button
+            onClick={() => setShowLiquidityModal(true)}
+            className='absolute top-3 right-3 p-1.5 rounded-lg hover:bg-muted/50 transition-colors'
+            title='Editar liquidez'
+          >
+            <Pencil className='w-4 h-4 text-muted-foreground' />
+          </button>
+        </div>
+        <BalanceCard
+          title='Total Ingresos'
+          amount={totalIncomes}
+          icon={<TrendingUp className='w-5 h-5 text-income' />}
+          variant='income'
+          subtitle={`${
+            mappedTransactions.filter(
+              (t) =>
+                t.type === 'expected_income' || t.type === 'unexpected_income'
+            ).length
+          } transacciones`}
         />
+        <BalanceCard
+          title='Total Gastos'
+          amount={totalExpenses}
+          icon={<TrendingDown className='w-5 h-5 text-expense' />}
+          variant='expense'
+          subtitle={`${
+            mappedTransactions.filter(
+              (t) => t.type === 'fixed_expense' || t.type === 'regular_expense'
+            ).length
+          } transacciones`}
+        />
+        <BalanceCard
+          title='Balance Final'
+          amount={finalBalance}
+          icon={<Calculator className='w-5 h-5 text-primary-foreground' />}
+          variant='balance'
+          subtitle='Disponible'
+        />
+      </div>
 
-        <div className='mt-6'>
-          <TransactionFilters
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            totalCount={allTransactions.length}
-          />
-
-          <TransactionsTable
-            transactions={allTransactionsForWidget}
-            loading={loading}
-            currency={currency}
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            activeFilter={activeFilter}
-            onEdit={handleEditTransaction}
-            onDelete={handleDeleteTransaction}
-          />
+      {/* Transactions */}
+      <div className='glass-card rounded-2xl p-6'>
+        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6'>
+          <h2 className='text-xl font-semibold'>Transacciones</h2>
+          <div className='flex items-center gap-2'>
+            <Filter className='w-4 h-4 text-muted-foreground' />
+            <Select
+              value={activeFilter}
+              onValueChange={(value) =>
+                setActiveFilter(value as TransactionFilter)
+              }
+            >
+              <SelectTrigger className='w-[180px]'>
+                <SelectValue placeholder='Filtrar por tipo' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Todas</SelectItem>
+                <SelectItem value='fixed_expense'>Gastos Fijos</SelectItem>
+                <SelectItem value='regular_expense'>
+                  Gastos Variables
+                </SelectItem>
+                <SelectItem value='expected_income'>
+                  Ingresos Esperados
+                </SelectItem>
+                <SelectItem value='unexpected_income'>
+                  Ingresos Extra
+                </SelectItem>
+                <SelectItem value='savings'>Ahorros</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+        <TransactionsTable
+          transactions={allTransactionsForWidget}
+          loading={loading}
+          currency={currency}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          activeFilter={activeFilter}
+          onEdit={handleEditTransaction}
+          onDelete={handleDeleteTransaction}
+        />
       </div>
 
       {/* Modales */}
