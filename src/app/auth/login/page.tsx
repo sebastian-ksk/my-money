@@ -97,7 +97,7 @@ export default function LoginPage() {
               <div className='w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-glow'>
                 <Wallet className='w-6 h-6 text-primary-foreground' />
               </div>
-              <span className='text-2xl font-bold text-gradient'>yMoney</span>
+              <span className='text-2xl font-bold text-gradient'>MyMoney</span>
             </div>
             <h1 className='text-2xl font-bold'>Inicia sesión</h1>
             <p className='text-muted-foreground mt-2'>

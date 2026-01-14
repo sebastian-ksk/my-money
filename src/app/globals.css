@@ -3,7 +3,7 @@
 
 @layer base {
   :root {
-    /* yMoney Design System - Fintech Premium */
+    /* MyMoney Design System - Fintech Premium */
     --background: 210 20% 98%;
     --foreground: 220 25% 10%;
 
@@ -53,16 +53,31 @@
     --radius: 1rem;
 
     /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%));
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(160 84% 39%),
+      hsl(160 84% 30%)
+    );
     --gradient-gold: linear-gradient(135deg, hsl(43 96% 56%), hsl(38 92% 50%));
-    --gradient-dark: linear-gradient(135deg, hsl(220 25% 10%), hsl(220 30% 18%));
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+    --gradient-dark: linear-gradient(
+      135deg,
+      hsl(220 25% 10%),
+      hsl(220 30% 18%)
+    );
+    --gradient-glass: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(255, 255, 255, 0.7)
+    );
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+      0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+      0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+      0 8px 10px -6px rgb(0 0 0 / 0.1);
     --shadow-glow: 0 0 40px -10px hsl(160 84% 39% / 0.4);
     --shadow-gold: 0 0 40px -10px hsl(43 96% 56% / 0.4);
 
@@ -105,7 +120,11 @@
     --input: 220 20% 20%;
     --ring: 160 84% 45%;
 
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    --gradient-glass: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1),
+      rgba(255, 255, 255, 0.05)
+    );
 
     --sidebar-background: 220 25% 10%;
     --sidebar-foreground: 210 20% 90%;
@@ -198,7 +217,11 @@
 
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 50%));
+    background-image: linear-gradient(
+      135deg,
+      hsl(160 84% 39%),
+      hsl(160 84% 50%)
+    );
   }
 
   .text-gradient-gold {
@@ -229,22 +252,43 @@
   }
 
   @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-20px); }
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
   }
 
   @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   @keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 }

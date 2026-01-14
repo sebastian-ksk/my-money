@@ -103,7 +103,7 @@ export default function Home() {
       {/* Footer */}
       <footer className='border-t border-border py-8'>
         <div className='container mx-auto px-4 text-center text-muted-foreground'>
-          <p>© 2024 yMoney. Gestiona tus finanzas con inteligencia.</p>
+          <p>© 2024 MyMoney. Gestiona tus finanzas con inteligencia.</p>
         </div>
       </footer>
     </Layout>
