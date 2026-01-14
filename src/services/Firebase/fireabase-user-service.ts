@@ -8,6 +8,7 @@ export interface UserData {
   photoURL?: string;
   emailVerified: boolean;
   providerId: string;
+  onboardingCompleted?: boolean;
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
@@ -54,6 +55,11 @@ export const userService = {
       });
     }
 
+    // Obtener el estado de onboarding
+    const userDoc = await usersRef.doc(user.uid).get();
+    const existingUserData = userDoc.data();
+    const onboardingCompleted = existingUserData?.onboardingCompleted ?? false;
+
     // Retornar sin los timestamps de Firestore para sessionStorage
     return {
       uid: userData.uid,
@@ -62,6 +68,7 @@ export const userService = {
       photoURL: userData.photoURL,
       emailVerified: userData.emailVerified,
       providerId: userData.providerId,
+      onboardingCompleted,
     };
   },
 
@@ -78,5 +85,21 @@ export const userService = {
 
     const doc = querySnapshot.docs[0];
     return doc.data() as UserData;
+  },
+
+  async getOnboardingStatus(userId: string): Promise<boolean> {
+    const userDoc = await firestore.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      return false;
+    }
+    const data = userDoc.data();
+    return data?.onboardingCompleted ?? false;
+  },
+
+  async setOnboardingCompleted(userId: string, completed: boolean): Promise<void> {
+    await firestore.collection('users').doc(userId).update({
+      onboardingCompleted: completed,
+      updatedAt: firebase.firestore.Timestamp.now(),
+    });
   },
 };

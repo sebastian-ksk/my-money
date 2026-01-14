@@ -40,7 +40,7 @@ export default function RegisterPage() {
         const userData = await userService.findOrCreateUser(result.user);
         saveUserToSession(userData);
       }
-      router.push('/my-month');
+      router.push('/config-my-money');
     } catch (err) {
       const error = err as { message?: string };
       if (error.message?.includes('already registered') || error.message?.includes('email-already-in-use')) {

@@ -1,16 +1,25 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAppSelector } from '@/Redux/store/hooks';
-import { selectIsAuthenticated, selectUser } from '@/Redux/features/auth';
+import {
+  selectIsAuthenticated,
+  selectUser,
+  selectOnboardingCompleted,
+} from '@/Redux/features/auth';
 import Header from '@/features/app/widgets/Header/header';
 import Sidebar from '@/features/app/widgets/Sidebar/sidebar';
 
+// Rutas permitidas sin completar onboarding
+const ONBOARDING_EXEMPT_PATHS = ['/config-my-money'];
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const user = useAppSelector(selectUser);
+  const onboardingCompleted = useAppSelector(selectOnboardingCompleted);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -29,14 +38,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Si el usuario está autenticado, mostrar contenido inmediatamente
+    // Si el usuario está autenticado, verificar onboarding
     if (isAuthenticated && user?.uid) {
-      console.log('Usuario autenticado, mostrando contenido');
+      console.log('Usuario autenticado, verificando onboarding');
       setIsCheckingAuth(false);
       authCheckAttempts.current = 0;
       if (redirectTimeoutRef.current) {
         clearTimeout(redirectTimeoutRef.current);
         redirectTimeoutRef.current = null;
+      }
+
+      // Si no ha completado el onboarding y no está en una ruta exenta, redirigir
+      const isExemptPath = ONBOARDING_EXEMPT_PATHS.some((path) =>
+        pathname.startsWith(path)
+      );
+      if (!onboardingCompleted && !isExemptPath) {
+        console.log('Onboarding no completado, redirigiendo a config-my-money');
+        router.replace('/config-my-money');
       }
       return;
     }
@@ -46,14 +64,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       const checkAuth = () => {
         authCheckAttempts.current += 1;
 
-        // Si el usuario está autenticado, mostrar contenido
+        // Si el usuario está autenticado, verificar onboarding
         if (isAuthenticated && user?.uid) {
-          console.log('Usuario autenticado, mostrando contenido');
+          console.log('Usuario autenticado, verificando onboarding');
           setIsCheckingAuth(false);
           authCheckAttempts.current = 0;
           if (redirectTimeoutRef.current) {
             clearTimeout(redirectTimeoutRef.current);
             redirectTimeoutRef.current = null;
+          }
+
+          // Si no ha completado el onboarding y no está en una ruta exenta, redirigir
+          const isExemptPath = ONBOARDING_EXEMPT_PATHS.some((path) =>
+            pathname.startsWith(path)
+          );
+          if (!onboardingCompleted && !isExemptPath) {
+            console.log(
+              'Onboarding no completado, redirigiendo a config-my-money'
+            );
+            router.replace('/config-my-money');
           }
           return;
         }
@@ -83,7 +112,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         redirectTimeoutRef.current = null;
       }
     };
-  }, [router, isAuthenticated, user, isCheckingAuth, isMounted]);
+  }, [
+    router,
+    isAuthenticated,
+    user,
+    isCheckingAuth,
+    isMounted,
+    onboardingCompleted,
+    pathname,
+  ]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);

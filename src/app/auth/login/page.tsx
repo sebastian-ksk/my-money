@@ -25,9 +25,14 @@ export default function LoginPage() {
     photoURL?: string;
     emailVerified: boolean;
     providerId: string;
+    onboardingCompleted?: boolean;
   }) => {
     sessionStorage.setItem('user', JSON.stringify(userData));
     sessionStorage.setItem('isAuthenticated', 'true');
+  };
+
+  const getRedirectPath = (onboardingCompleted?: boolean) => {
+    return onboardingCompleted ? '/my-month' : '/config-my-money';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,8 +45,10 @@ export default function LoginPage() {
       if (result.user) {
         const userData = await userService.findOrCreateUser(result.user);
         saveUserToSession(userData);
+        router.push(getRedirectPath(userData.onboardingCompleted));
+        return;
       }
-      router.push('/my-month');
+      router.push('/config-my-money');
     } catch (err) {
       const error = err as { message?: string };
       if (
@@ -67,8 +74,10 @@ export default function LoginPage() {
       if (result.user) {
         const userData = await userService.findOrCreateUser(result.user);
         saveUserToSession(userData);
+        router.push(getRedirectPath(userData.onboardingCompleted));
+        return;
       }
-      router.push('/my-month');
+      router.push('/config-my-money');
     } catch (err) {
       const error = err as { message?: string };
       setError(error.message || 'Error al iniciar sesión con Google');

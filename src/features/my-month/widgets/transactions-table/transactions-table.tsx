@@ -4,7 +4,10 @@ import React from 'react';
 import firebaseApp from 'firebase/app';
 import { Button } from '@/components/ui';
 import { formatCurrency } from '@/utils/currency';
-import type { Transaction, TransactionType } from '@/Redux/features/my-month/my-month-models';
+import type {
+  Transaction,
+  TransactionType,
+} from '@/Redux/features/my-month/my-month-models';
 import type { TransactionFilter } from '../transaction-filters';
 
 interface TransactionWithPending extends Transaction {
@@ -96,6 +99,16 @@ const filterTransactions = (
       (t) => t.type === 'expected_income' || t.type === 'unexpected_income'
     );
   }
+  // Filtros específicos por tipo de transacción
+  if (
+    filter === 'fixed_expense' ||
+    filter === 'regular_expense' ||
+    filter === 'expected_income' ||
+    filter === 'unexpected_income' ||
+    filter === 'savings'
+  ) {
+    return transactions.filter((t) => t.type === filter);
+  }
   return transactions;
 };
 
@@ -178,9 +191,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
           </thead>
           <tbody>
             {filteredTransactions.map((transaction) => {
-              const isPending = Boolean(
-                transaction.id?.startsWith('pending-')
-              );
+              const isPending = Boolean(transaction.id?.startsWith('pending-'));
               return (
                 <tr
                   key={transaction.id}
@@ -410,9 +421,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
                     Editar
                   </Button>
                   <Button
-                    onClick={() =>
-                      transaction.id && onDelete(transaction.id)
-                    }
+                    onClick={() => transaction.id && onDelete(transaction.id)}
                     variant='ghost'
                     size='sm'
                     className='!px-3 text-red-600 hover:text-red-700 hover:bg-red-50'
@@ -443,4 +452,3 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
     </>
   );
 };
-

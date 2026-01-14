@@ -2,7 +2,15 @@
 
 import React from 'react';
 
-export type TransactionFilter = 'all' | 'expenses' | 'incomes';
+export type TransactionFilter = 
+  | 'all' 
+  | 'expenses' 
+  | 'incomes' 
+  | 'fixed_expense' 
+  | 'regular_expense' 
+  | 'expected_income' 
+  | 'unexpected_income' 
+  | 'savings';
 
 interface TransactionFiltersProps {
   activeFilter: TransactionFilter;

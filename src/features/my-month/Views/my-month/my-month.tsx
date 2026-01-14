@@ -29,6 +29,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { BalanceCard } from '@/components/my-month';
+import { AppOnboarding } from '@/components/onboarding';
 import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
 import { selectUser } from '@/Redux/features/auth';
 import {
@@ -386,6 +387,9 @@ const MyMonth = () => {
 
   return (
     <div className='container mx-auto px-4 py-8'>
+      {/* Onboarding Tour */}
+      <AppOnboarding page='my-month' />
+
       {/* Header */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8'>
         <div>
@@ -400,6 +404,7 @@ const MyMonth = () => {
         <div className='flex flex-wrap gap-2'>
           <Button
             variant='outline'
+            data-tour='add-expense-btn'
             onClick={() => {
               if (user?.uid && fixedExpenses.length === 0) {
                 dispatch(loadFixedExpenses(user.uid));
@@ -411,11 +416,19 @@ const MyMonth = () => {
             <CreditCard className='w-4 h-4 mr-2' />
             <span className='hidden sm:inline'>Agregar</span> Gasto
           </Button>
-          <Button variant='outline' onClick={() => handleOpenIncomeModal()}>
+          <Button
+            variant='outline'
+            data-tour='add-income-btn'
+            onClick={() => handleOpenIncomeModal()}
+          >
             <DollarSign className='w-4 h-4 mr-2' />
             <span className='hidden sm:inline'>Agregar</span> Ingreso
           </Button>
-          <Button variant='outline' onClick={() => handleOpenSavingsModal()}>
+          <Button
+            variant='outline'
+            data-tour='add-savings-btn'
+            onClick={() => handleOpenSavingsModal()}
+          >
             <PiggyBank className='w-4 h-4 mr-2' />
             <span className='hidden sm:inline'>Agregar</span> Ahorro
           </Button>
@@ -424,7 +437,7 @@ const MyMonth = () => {
 
       {/* Balance Cards */}
       <div className='grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8'>
-        <div className='relative'>
+        <div className='relative' data-tour='liquidity-card'>
           <BalanceCard
             title='Liquidez Inicial'
             amount={displayLiquidity}
@@ -439,40 +452,50 @@ const MyMonth = () => {
             <Pencil className='w-4 h-4 text-muted-foreground' />
           </button>
         </div>
-        <BalanceCard
-          title='Total Ingresos'
-          amount={totalIncomes}
-          icon={<TrendingUp className='w-5 h-5 text-income' />}
-          variant='income'
-          subtitle={`${
-            mappedTransactions.filter(
-              (t) =>
-                t.type === 'expected_income' || t.type === 'unexpected_income'
-            ).length
-          } transacciones`}
-        />
-        <BalanceCard
-          title='Total Gastos'
-          amount={totalExpenses}
-          icon={<TrendingDown className='w-5 h-5 text-expense' />}
-          variant='expense'
-          subtitle={`${
-            mappedTransactions.filter(
-              (t) => t.type === 'fixed_expense' || t.type === 'regular_expense'
-            ).length
-          } transacciones`}
-        />
-        <BalanceCard
-          title='Balance Final'
-          amount={finalBalance}
-          icon={<Calculator className='w-5 h-5 text-primary-foreground' />}
-          variant='balance'
-          subtitle='Disponible'
-        />
+        <div data-tour='income-card'>
+          <BalanceCard
+            title='Total Ingresos'
+            amount={totalIncomes}
+            icon={<TrendingUp className='w-5 h-5 text-income' />}
+            variant='income'
+            subtitle={`${
+              mappedTransactions.filter(
+                (t) =>
+                  t.type === 'expected_income' || t.type === 'unexpected_income'
+              ).length
+            } transacciones`}
+          />
+        </div>
+        <div data-tour='expense-card'>
+          <BalanceCard
+            title='Total Gastos'
+            amount={totalExpenses}
+            icon={<TrendingDown className='w-5 h-5 text-expense' />}
+            variant='expense'
+            subtitle={`${
+              mappedTransactions.filter(
+                (t) =>
+                  t.type === 'fixed_expense' || t.type === 'regular_expense'
+              ).length
+            } transacciones`}
+          />
+        </div>
+        <div data-tour='balance-card'>
+          <BalanceCard
+            title='Balance Final'
+            amount={finalBalance}
+            icon={<Calculator className='w-5 h-5 text-primary-foreground' />}
+            variant='balance'
+            subtitle='Disponible'
+          />
+        </div>
       </div>
 
       {/* Transactions */}
-      <div className='glass-card rounded-2xl p-6'>
+      <div
+        className='glass-card rounded-2xl p-6'
+        data-tour='transactions-section'
+      >
         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6'>
           <h2 className='text-xl font-semibold'>Transacciones</h2>
           <div className='flex items-center gap-2'>

@@ -62,7 +62,7 @@ export default function UserConfigSection() {
   return (
     <form onSubmit={handleSubmit} className='space-y-6'>
       <div className='grid sm:grid-cols-2 gap-6'>
-        <div className='space-y-2'>
+        <div className='space-y-2' data-tour='config-general'>
           <Label htmlFor='cutoff'>Día de Corte Mensual</Label>
           <Select
             value={formData.monthResetDay.toString()}
@@ -86,7 +86,7 @@ export default function UserConfigSection() {
           </p>
         </div>
 
-        <div className='space-y-2'>
+        <div className='space-y-2' data-tour='config-currency'>
           <Label htmlFor='currency'>Moneda</Label>
           <Select
             value={formData.currency}

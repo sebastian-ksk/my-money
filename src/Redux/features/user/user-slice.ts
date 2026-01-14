@@ -10,12 +10,14 @@ interface UserState {
     emailVerified: boolean;
     providerId: string;
   } | null;
+  onboardingCompleted: boolean;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: UserState = {
   profile: null,
+  onboardingCompleted: false,
   loading: false,
   error: null,
 };
@@ -26,6 +28,9 @@ const userSlice = createSlice({
   reducers: {
     setProfile: (state, action: PayloadAction<UserState['profile']>) => {
       state.profile = action.payload;
+    },
+    setOnboardingCompleted: (state, action: PayloadAction<boolean>) => {
+      state.onboardingCompleted = action.payload;
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
@@ -44,6 +49,6 @@ const userSlice = createSlice({
   },
 });
 
-export const { setProfile, setLoading, setError, clearProfile, resetUserState } =
+export const { setProfile, setOnboardingCompleted, setLoading, setError, clearProfile, resetUserState } =
   userSlice.actions;
 export const userReducer = userSlice.reducer;

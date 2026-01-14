@@ -15,6 +15,7 @@ interface AuthState {
     photoURL?: string;
     emailVerified: boolean;
     providerId: string;
+    onboardingCompleted?: boolean;
   } | null;
   loading: boolean;
   error: string | null;
@@ -45,6 +46,11 @@ const authSlice = createSlice({
       state.user = null;
       state.isAuthenticated = false;
       state.error = null;
+    },
+    setOnboardingCompleted: (state, action: PayloadAction<boolean>) => {
+      if (state.user) {
+        state.user.onboardingCompleted = action.payload;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -111,5 +117,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setUser, setLoading, setError, logout } = authSlice.actions;
+export const { setUser, setLoading, setError, logout, setOnboardingCompleted } = authSlice.actions;
 export const authReducer = authSlice.reducer;
