@@ -9,6 +9,7 @@ export interface UserData {
   emailVerified: boolean;
   providerId: string;
   onboardingCompleted?: boolean;
+  onboardingMyMonthCompleted?: boolean;
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
@@ -59,6 +60,7 @@ export const userService = {
     const userDoc = await usersRef.doc(user.uid).get();
     const existingUserData = userDoc.data();
     const onboardingCompleted = existingUserData?.onboardingCompleted ?? false;
+    const onboardingMyMonthCompleted = existingUserData?.onboardingMyMonthCompleted ?? false;
 
     // Retornar sin los timestamps de Firestore para sessionStorage
     return {
@@ -69,6 +71,7 @@ export const userService = {
       emailVerified: userData.emailVerified,
       providerId: userData.providerId,
       onboardingCompleted,
+      onboardingMyMonthCompleted,
     };
   },
 
@@ -99,6 +102,22 @@ export const userService = {
   async setOnboardingCompleted(userId: string, completed: boolean): Promise<void> {
     await firestore.collection('users').doc(userId).update({
       onboardingCompleted: completed,
+      updatedAt: firebase.firestore.Timestamp.now(),
+    });
+  },
+
+  async getMyMonthOnboardingStatus(userId: string): Promise<boolean> {
+    const userDoc = await firestore.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      return false;
+    }
+    const data = userDoc.data();
+    return data?.onboardingMyMonthCompleted ?? false;
+  },
+
+  async setMyMonthOnboardingCompleted(userId: string, completed: boolean): Promise<void> {
+    await firestore.collection('users').doc(userId).update({
+      onboardingMyMonthCompleted: completed,
       updatedAt: firebase.firestore.Timestamp.now(),
     });
   },

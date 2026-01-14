@@ -8,3 +8,5 @@ export const selectAuthLoading = (state: RootState) => state.auth.loading;
 export const selectAuthError = (state: RootState) => state.auth.error;
 export const selectOnboardingCompleted = (state: RootState) =>
   state.auth.user?.onboardingCompleted ?? false;
+export const selectOnboardingMyMonthCompleted = (state: RootState) =>
+  state.auth.user?.onboardingMyMonthCompleted ?? false;

@@ -39,49 +39,49 @@ export const configOnboardingSteps: Step[] = [
 export const myMonthOnboardingSteps: Step[] = [
   {
     target: 'body',
-    content: '¡Excelente! Ahora veamos cómo funciona "Mi Mes", el corazón de tu control financiero mensual.',
+    content: '¡Bienvenido a "Mi Mes"! Esta es la pantalla principal donde gestionarás tu dinero día a día. Aquí podrás registrar todos tus movimientos y ver tu situación financiera en tiempo real.',
     placement: 'center',
     disableBeacon: true,
   },
   {
     target: '[data-tour="liquidity-card"]',
-    content: 'Al inicio de cada mes, registra aquí cuánto dinero te quedó realmente del mes anterior. Esto te permite comparar el saldo real con el calculado, ayudándote a identificar gastos no registrados o posibles fugas de dinero. ¡Ser juicioso con tus registros marca la diferencia!',
+    content: 'La Liquidez Inicial representa el dinero disponible que tienes al comenzar el mes. Te recomendamos actualizarla con el valor real de tu dinero líquido (efectivo, cuentas bancarias, etc.). Esto permite comparar mes a mes y detectar si hay diferencias entre lo calculado y lo real, ayudándote a identificar gastos no registrados o errores.',
     placement: 'bottom',
   },
   {
     target: '[data-tour="income-card"]',
-    content: 'Aquí verás el total de ingresos del mes: tanto los esperados (como tu salario) como los adicionales.',
+    content: 'Aquí verás el total de tus ingresos del mes, incluyendo tanto los ingresos esperados (como tu salario) como los ingresos adicionales o inesperados que recibas.',
     placement: 'bottom',
   },
   {
     target: '[data-tour="expense-card"]',
-    content: 'El total de tus gastos del mes: fijos y variables. Mantén este número bajo control.',
+    content: 'El total de tus gastos del mes: incluye tanto los gastos fijos (arriendo, servicios, etc.) como los gastos variables del día a día. Mantener este número controlado es clave para tu salud financiera.',
     placement: 'bottom',
   },
   {
     target: '[data-tour="balance-card"]',
-    content: 'Tu balance final: lo que te queda disponible después de ingresos y gastos. Este es el número que deberías comparar con tu saldo real al iniciar el siguiente mes.',
+    content: 'Tu Balance Final muestra el dinero disponible después de todos tus ingresos y gastos. Este valor debería coincidir aproximadamente con tu dinero real al final del mes.',
     placement: 'bottom',
   },
   {
-    target: '[data-tour="transactions-section"]',
-    content: 'Aquí verás todas tus transacciones del mes. Los gastos fijos e ingresos esperados aparecerán automáticamente para que los registres cuando ocurran.',
-    placement: 'top',
-  },
-  {
     target: '[data-tour="add-expense-btn"]',
-    content: 'Usa este botón para agregar gastos: tanto fijos (configurados previamente) como gastos variables del día a día.',
+    content: 'Desde aquí puedes agregar tus gastos. Puedes registrar un gasto fijo (como el arriendo o servicios que ya configuraste) o un gasto ocasional del día a día (compras, transporte, comida, etc.).',
     placement: 'bottom',
   },
   {
     target: '[data-tour="add-income-btn"]',
-    content: 'Registra aquí tus ingresos cuando los recibas.',
+    content: 'Registra tus ingresos aquí. Puedes agregar un ingreso esperado (como tu salario configurado) o un ingreso adicional inesperado.',
     placement: 'bottom',
   },
   {
     target: '[data-tour="add-savings-btn"]',
-    content: 'Cuando destines dinero a tus ahorros, regístralo aquí para mantener un control de cuánto estás ahorrando.',
+    content: 'Cuando destines dinero al ahorro, regístralo aquí. Podrás seleccionar a qué fuente de ahorro va (cuenta de ahorros, fondo de emergencia, etc.) y cuánto estás apartando.',
     placement: 'bottom',
+  },
+  {
+    target: '[data-tour="transactions-section"]',
+    content: 'En esta tabla verás todas tus transacciones del mes. Los gastos fijos e ingresos esperados pendientes aparecerán automáticamente para que los registres cuando ocurran. Puedes filtrar por tipo de transacción y editar o eliminar registros.',
+    placement: 'top',
   },
 ];
 

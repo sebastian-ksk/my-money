@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import firebaseApp from 'firebase/app';
 import LiquidityModal from '@/features/my-month/widgets/liquidity-modal/liquidity-modal';
 import ExpenseModal from '@/features/my-month/widgets/expense-modal/expense-modal';
@@ -29,7 +29,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { BalanceCard } from '@/components/my-month';
-import { AppOnboarding } from '@/components/onboarding';
+import { AppOnboarding, type OnboardingModalCallbacks } from '@/components/onboarding';
 import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
 import { selectUser } from '@/Redux/features/auth';
 import {
@@ -385,10 +385,36 @@ const MyMonth = () => {
   ];
   const displayMonthName = monthNames[selectedMonth];
 
+  // Callbacks para el onboarding - abrir/cerrar modales durante el tour
+  const closeAllModals = useCallback(() => {
+    setShowLiquidityModal(false);
+    setShowExpenseModal(false);
+    setShowIncomeModal(false);
+    setShowSavingsModal(false);
+    setEditingTransaction(null);
+  }, []);
+
+  const onboardingModalCallbacks: OnboardingModalCallbacks = useMemo(() => ({
+    onOpenLiquidityModal: () => setShowLiquidityModal(true),
+    onOpenExpenseModal: () => {
+      setEditingTransaction(null);
+      setShowExpenseModal(true);
+    },
+    onOpenIncomeModal: () => {
+      setEditingTransaction(null);
+      setShowIncomeModal(true);
+    },
+    onOpenSavingsModal: () => {
+      setEditingTransaction(null);
+      setShowSavingsModal(true);
+    },
+    onCloseAllModals: closeAllModals,
+  }), [closeAllModals]);
+
   return (
     <div className='container mx-auto px-4 py-8'>
       {/* Onboarding Tour */}
-      <AppOnboarding page='my-month' />
+      <AppOnboarding page='my-month' modalCallbacks={onboardingModalCallbacks} />
 
       {/* Header */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8'>

@@ -16,6 +16,7 @@ interface AuthState {
     emailVerified: boolean;
     providerId: string;
     onboardingCompleted?: boolean;
+    onboardingMyMonthCompleted?: boolean;
   } | null;
   loading: boolean;
   error: string | null;
@@ -50,6 +51,11 @@ const authSlice = createSlice({
     setOnboardingCompleted: (state, action: PayloadAction<boolean>) => {
       if (state.user) {
         state.user.onboardingCompleted = action.payload;
+      }
+    },
+    setOnboardingMyMonthCompleted: (state, action: PayloadAction<boolean>) => {
+      if (state.user) {
+        state.user.onboardingMyMonthCompleted = action.payload;
       }
     },
   },
@@ -117,5 +123,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setUser, setLoading, setError, logout, setOnboardingCompleted } = authSlice.actions;
+export const { setUser, setLoading, setError, logout, setOnboardingCompleted, setOnboardingMyMonthCompleted } = authSlice.actions;
 export const authReducer = authSlice.reducer;
