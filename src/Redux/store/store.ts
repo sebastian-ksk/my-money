@@ -17,6 +17,7 @@ import { authReducer } from '../features/auth';
 import { userReducer } from '../features/user';
 import { configMyMoneyReducer } from '../features/config-my-money';
 import { myMonthReducer } from '../features/my-month';
+import { dashboardReducer } from '../features/dashboard';
 
 // Combinar reducers por dominio
 const rootReducer = combineReducers({
@@ -24,6 +25,7 @@ const rootReducer = combineReducers({
   user: userReducer,
   configMyMoney: configMyMoneyReducer,
   myMonth: myMonthReducer,
+  dashboard: dashboardReducer,
   // Agregar más features aquí
 });
 
@@ -68,7 +70,10 @@ export const store = configureStore({
         ],
         isSerializable: (value: any, path?: string) => {
           // Ignorar paths que contengan createdAt o updatedAt (son Timestamps de Firebase)
-          if (path && (path.includes('createdAt') || path.includes('updatedAt'))) {
+          if (
+            path &&
+            (path.includes('createdAt') || path.includes('updatedAt'))
+          ) {
             return true;
           }
           // Permitir Timestamps de Firebase

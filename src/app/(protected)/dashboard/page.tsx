@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { StatsCards, ExpenseChart, MonthlyTrend } from '@/components/dashboard';
 import { PieChart, Calendar, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
+import { selectUser } from '@/Redux/features/auth';
+import { selectUserConfig } from '@/Redux/features/config-my-money';
+import {
+  loadDashboardData,
+  setSelectedPeriod,
+  selectSelectedPeriod,
+  selectPeriodSummary,
+  selectDashboardLoading,
+  type PeriodFilter,
+} from '@/Redux/features/dashboard';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector(selectUser);
+  const userConfig = useAppSelector(selectUserConfig);
+  const selectedPeriod = useAppSelector(selectSelectedPeriod);
+  const periodSummary = useAppSelector(selectPeriodSummary);
+  const loading = useAppSelector(selectDashboardLoading);
+
+  // Cargar datos del dashboard al montar o cambiar periodo
+  useEffect(() => {
+    if (user?.uid && userConfig?.monthResetDay) {
+      dispatch(
+        loadDashboardData({
+          userId: user.uid,
+          period: selectedPeriod,
+          monthResetDay: userConfig.monthResetDay,
+        })
+      );
+    }
+  }, [dispatch, user?.uid, userConfig?.monthResetDay, selectedPeriod]);
+
+  const handlePeriodChange = (value: string) => {
+    dispatch(setSelectedPeriod(value as PeriodFilter));
+  };
+
   return (
     <div className='container mx-auto px-4 py-8'>
       {/* Header */}
@@ -29,7 +66,7 @@ export default function DashboardPage() {
         <div className='flex flex-wrap items-center gap-3'>
           <div className='flex items-center gap-2'>
             <Calendar className='w-4 h-4 text-muted-foreground' />
-            <Select defaultValue='6m'>
+            <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
               <SelectTrigger className='w-[140px]'>
                 <SelectValue placeholder='Período' />
               </SelectTrigger>
@@ -64,16 +101,50 @@ export default function DashboardPage() {
         <h3 className='text-lg font-semibold mb-6'>Resumen del Período</h3>
         <div className='grid sm:grid-cols-3 gap-6'>
           <div className='text-center p-6 rounded-xl bg-muted/50'>
-            <p className='text-4xl font-bold text-gradient mb-2'>23</p>
-            <p className='text-muted-foreground'>Transacciones</p>
+            {loading && !periodSummary ? (
+              <>
+                <Skeleton className='h-10 w-16 mx-auto mb-2' />
+                <Skeleton className='h-4 w-24 mx-auto' />
+              </>
+            ) : (
+              <>
+                <p className='text-4xl font-bold text-gradient mb-2'>
+                  {periodSummary?.transactionCount ?? 0}
+                </p>
+                <p className='text-muted-foreground'>Transacciones</p>
+              </>
+            )}
           </div>
           <div className='text-center p-6 rounded-xl bg-muted/50'>
-            <p className='text-4xl font-bold text-gradient-gold mb-2'>77%</p>
-            <p className='text-muted-foreground'>Tasa de Ahorro</p>
+            {loading && !periodSummary ? (
+              <>
+                <Skeleton className='h-10 w-16 mx-auto mb-2' />
+                <Skeleton className='h-4 w-24 mx-auto' />
+              </>
+            ) : (
+              <>
+                <p className='text-4xl font-bold text-gradient-gold mb-2'>
+                  {periodSummary?.savingsRate ?? 0}%
+                </p>
+                <p className='text-muted-foreground'>Tasa de Ahorro</p>
+              </>
+            )}
           </div>
           <div className='text-center p-6 rounded-xl bg-muted/50'>
-            <p className='text-4xl font-bold text-gradient mb-2'>+12%</p>
-            <p className='text-muted-foreground'>vs. Mes Anterior</p>
+            {loading && !periodSummary ? (
+              <>
+                <Skeleton className='h-10 w-16 mx-auto mb-2' />
+                <Skeleton className='h-4 w-24 mx-auto' />
+              </>
+            ) : (
+              <>
+                <p className='text-4xl font-bold text-gradient mb-2'>
+                  {(periodSummary?.changeVsPrevious ?? 0) >= 0 ? '+' : ''}
+                  {periodSummary?.changeVsPrevious ?? 0}%
+                </p>
+                <p className='text-muted-foreground'>vs. Mes Anterior</p>
+              </>
+            )}
           </div>
         </div>
       </div>
