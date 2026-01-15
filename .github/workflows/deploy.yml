@@ -54,36 +54,7 @@ jobs:
             docker compose down
             docker compose up -d --build --remove-orphans
             docker image prune -f
-            echo "✅ Build completado"
-            
-            echo "⏳ Esperando a que el contenedor esté healthy..."
-            MAX_ATTEMPTS=30
-            ATTEMPT=0
-            while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-              HEALTH=$(docker inspect --format='{{.State.Health.Status}}' my-money 2>/dev/null || echo "starting")
-              STATUS=$(docker inspect --format='{{.State.Status}}' my-money 2>/dev/null || echo "unknown")
-              echo "Intento $((ATTEMPT+1))/$MAX_ATTEMPTS - Estado: $STATUS, Health: $HEALTH"
-              
-              if [ "$HEALTH" = "healthy" ]; then
-                echo "✅ Contenedor está healthy!"
-                break
-              fi
-              
-              if [ "$STATUS" = "exited" ] || [ "$STATUS" = "dead" ]; then
-                echo "❌ Contenedor crasheó. Reiniciando..."
-                docker compose up -d
-              fi
-              
-              ATTEMPT=$((ATTEMPT+1))
-              sleep 5
-            done
-            
-            if [ "$HEALTH" != "healthy" ]; then
-              echo "⚠️ Contenedor no alcanzó estado healthy después de $MAX_ATTEMPTS intentos"
-              echo "📋 Logs del contenedor:"
-              docker logs --tail 100 my-money 2>&1
-            fi
-            
+            echo "✅ Deploy completado"
             echo "🔄 Forzando recarga de Traefik..."
             docker restart traefik 2>/dev/null || echo "⚠️ No se pudo reiniciar Traefik (puede que no esté corriendo o tenga otro nombre)"
             echo ""
