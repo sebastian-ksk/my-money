@@ -49,17 +49,36 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -e
             cd ~/apps/my-money
+            echo "📥 Actualizando código..."
             git pull origin main
-            docker compose down
-            docker compose up -d --build --remove-orphans
+
+            echo "🔨 Construyendo y desplegando..."
+            docker compose down || true
+            docker compose up -d --build --remove-orphans 2>&1
+
+            echo "🧹 Limpiando imágenes..."
             docker image prune -f
-            echo "✅ Deploy completado"
-            echo "🔄 Forzando recarga de Traefik..."
-            docker restart traefik 2>/dev/null || echo "⚠️ No se pudo reiniciar Traefik (puede que no esté corriendo o tenga otro nombre)"
-            echo ""
-            echo "📋 Verificando que el contenedor está en la red traefik_network:"
-            docker inspect my-money --format '{{range $net, $conf := .NetworkSettings.Networks}}{{$net}} {{end}}' || echo "❌ Error al verificar red"
+
+            echo "⏳ Esperando que el contenedor inicie..."
+            sleep 10
+
+            echo "📋 Estado del contenedor:"
+            docker ps -a | grep my-money || echo "❌ Contenedor no existe"
+
+            if docker ps | grep -q my-money; then
+              echo "✅ Contenedor está corriendo"
+              echo "🔄 Reiniciando Traefik..."
+              docker restart traefik 2>/dev/null || echo "⚠️ No se pudo reiniciar Traefik"
+              echo "📋 Verificando red:"
+              docker inspect my-money --format '{{range $net, $conf := .NetworkSettings.Networks}}{{$net}} {{end}}'
+            else
+              echo "❌ ERROR: Contenedor no está corriendo"
+              echo "📋 Logs del build/contenedor:"
+              docker logs my-money 2>&1 || echo "No hay logs disponibles"
+              exit 1
+            fi
 
       - name: Wait and show logs
         uses: appleboy/ssh-action@master
