@@ -38,6 +38,9 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Instalar wget para healthcheck
+RUN apk add --no-cache wget
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
