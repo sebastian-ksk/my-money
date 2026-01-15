@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'MyMoney',
-  description: 'Gestiona tus finanzas de manera sencilla',
+  description: 'Gestiona tus finanzas de manera sencilla, mes a mes',
 };
 
 export default function RootLayout({
