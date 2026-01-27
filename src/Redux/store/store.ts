@@ -18,6 +18,7 @@ import { userReducer } from '../features/user';
 import { configMyMoneyReducer } from '../features/config-my-money';
 import { myMonthReducer } from '../features/my-month';
 import { dashboardReducer } from '../features/dashboard';
+import { initialLiquidityReducer } from '../features/initial-liquidity';
 
 // Combinar reducers por dominio
 const rootReducer = combineReducers({
@@ -26,6 +27,7 @@ const rootReducer = combineReducers({
   configMyMoney: configMyMoneyReducer,
   myMonth: myMonthReducer,
   dashboard: dashboardReducer,
+  initialLiquidity: initialLiquidityReducer,
   // Agregar más features aquí
 });
 
@@ -67,6 +69,8 @@ export const store = configureStore({
           'configMyMoney.fixedExpenses',
           'configMyMoney.expectedIncomes',
           'configMyMoney.expenseCategories',
+          'initialLiquidity.currentLiquidity',
+          'initialLiquidity.history',
         ],
         isSerializable: (value: any, path?: string) => {
           // Ignorar paths que contengan createdAt o updatedAt (son Timestamps de Firebase)
