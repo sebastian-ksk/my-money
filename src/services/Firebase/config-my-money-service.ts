@@ -20,11 +20,22 @@ export interface BalanceSource {
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
 
+export interface SavingsDeposit {
+  id?: string;
+  date: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  amount: number;
+  originSource: string;
+  transactionId: string;
+  monthPeriod: string;
+}
+
 export interface SavingsSource {
   id?: string;
   userId: string;
   name: string;
-  amount: number;
+  amount: number; // Monto inicial del ahorro
+  currentBalance: number; // Balance actual = amount + suma de depósitos
+  deposits?: SavingsDeposit[];
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
@@ -385,7 +396,7 @@ export const configMyMoneyService = {
 
   async createSavingsSource(
     userId: string,
-    source: Omit<SavingsSource, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+    source: Omit<SavingsSource, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'currentBalance' | 'deposits'>
   ): Promise<SavingsSource> {
     const sourcesRef = firestore.collection('savings_sources');
     const now = firebase.firestore.Timestamp.now();
@@ -393,6 +404,8 @@ export const configMyMoneyService = {
     const sourceData: SavingsSource = {
       userId,
       ...source,
+      currentBalance: source.amount || 0, // El balance inicial es el amount
+      deposits: [], // Inicializar array de depósitos vacío
       createdAt: now,
       updatedAt: now,
     };

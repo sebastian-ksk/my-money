@@ -48,11 +48,22 @@ export interface BalanceSource {
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }
 
+export interface SavingsDeposit {
+  id?: string;
+  date: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
+  amount: number;
+  originSource: string; // De dónde viene el ahorro
+  transactionId: string; // Referencia a la transacción
+  monthPeriod: string;
+}
+
 export interface SavingsSource {
   id?: string;
   userId: string;
   name: string;
-  amount: number;
+  amount: number; // Monto inicial del ahorro
+  currentBalance: number; // Balance actual = amount + suma de depósitos
+  deposits?: SavingsDeposit[]; // Historial de depósitos
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
 }

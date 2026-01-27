@@ -28,6 +28,13 @@ import {
   deleteMoneySource,
   loadPreviousMonthSources,
 } from './sources-money-thunks';
+import {
+  loadSavingsTransactions,
+  createSavingsTransaction,
+  updateSavingsTransaction,
+  deleteSavingsTransaction,
+  loadSavingsSourcesWithBalance,
+} from './savings-thunks';
 import { logoutUser } from '../auth/auth-thunks';
 import type { MyMonthState } from './my-month-models';
 
@@ -36,6 +43,8 @@ const initialState: MyMonthState = {
   transactions: [],
   monthlyLiquidity: null,
   moneySources: [],
+  totalSavings: 0,
+  totalSavingsBalance: 0,
   loading: false,
   error: null,
   currentMonthPeriod: null,
@@ -274,6 +283,69 @@ const myMonthSlice = createSlice({
       .addCase(deleteLiquiditySourceNew.fulfilled, (state, action) => {
         state.monthlyLiquidity = action.payload;
       })
+      // ========== Savings Thunks ==========
+      // Load Savings Transactions
+      .addCase(loadSavingsTransactions.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadSavingsTransactions.fulfilled, (state, action) => {
+        state.loading = false;
+        state.totalSavings = action.payload.totalSavings;
+      })
+      .addCase(loadSavingsTransactions.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string || 'Error al cargar ahorros';
+      })
+      // Create Savings Transaction
+      .addCase(createSavingsTransaction.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createSavingsTransaction.fulfilled, (state, action) => {
+        state.loading = false;
+        // Agregar la transacción a la lista si no existe
+        const exists = state.transactions.some(
+          (t) => t.id === action.payload.id
+        );
+        if (!exists) {
+          state.transactions.push(action.payload);
+        }
+        // Actualizar total de ahorros
+        state.totalSavings += action.payload.value;
+      })
+      .addCase(createSavingsTransaction.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string || 'Error al crear ahorro';
+      })
+      // Update Savings Transaction
+      .addCase(updateSavingsTransaction.fulfilled, (state, action) => {
+        const index = state.transactions.findIndex(
+          (t) => t.id === action.payload.id
+        );
+        if (index !== -1) {
+          // Ajustar el total de ahorros
+          const oldValue = state.transactions[index].value;
+          state.totalSavings = state.totalSavings - oldValue + action.payload.value;
+          state.transactions[index] = action.payload;
+        }
+      })
+      // Delete Savings Transaction
+      .addCase(deleteSavingsTransaction.fulfilled, (state, action) => {
+        const transaction = state.transactions.find(
+          (t) => t.id === action.payload
+        );
+        if (transaction) {
+          state.totalSavings -= transaction.value;
+        }
+        state.transactions = state.transactions.filter(
+          (t) => t.id !== action.payload
+        );
+      })
+      // Load Savings Sources With Balance
+      .addCase(loadSavingsSourcesWithBalance.fulfilled, (state, action) => {
+        state.totalSavingsBalance = action.payload.totalBalance;
+      })
       // Reset on logout
       .addCase(logoutUser.fulfilled, () => {
         const currentDate = new Date();
@@ -281,6 +353,8 @@ const myMonthSlice = createSlice({
           transactions: [],
           monthlyLiquidity: null,
           moneySources: [],
+          totalSavings: 0,
+          totalSavingsBalance: 0,
           loading: false,
           error: null,
           currentMonthPeriod: null,

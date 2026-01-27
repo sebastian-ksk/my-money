@@ -8,6 +8,7 @@ interface BalanceCardsProps {
   displayLiquidity: number;
   totalExpenses: number;
   totalIncomes: number;
+  totalSavings: number;
   finalBalance: number;
   currency: string;
   onEditLiquidity: () => void;
@@ -17,13 +18,14 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
   displayLiquidity,
   totalExpenses,
   totalIncomes,
+  totalSavings,
   finalBalance,
   currency,
   onEditLiquidity,
 }) => {
   return (
     <div className='mb-6 sm:mb-8'>
-      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4'>
+      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4'>
         {/* Card: Saldo Inicial */}
         <div className='bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 sm:p-4 lg:p-5 border border-blue-200 shadow-sm min-w-0'>
           <div className='flex items-start justify-between mb-2 gap-2'>
@@ -130,6 +132,34 @@ export const BalanceCards: React.FC<BalanceCardsProps> = ({
             {formatCurrency(totalIncomes, currency)}
           </p>
           <p className='text-xs text-green-700 mt-1'>Este mes</p>
+        </div>
+
+        {/* Card: Ahorros */}
+        <div className='bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 sm:p-4 lg:p-5 border border-purple-200 shadow-sm min-w-0'>
+          <div className='flex items-center gap-2 mb-2'>
+            <div className='p-1.5 sm:p-2 bg-purple-200 rounded-lg flex-shrink-0'>
+              <svg
+                className='w-4 h-4 sm:w-5 sm:h-5 text-purple-700'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'
+                />
+              </svg>
+            </div>
+            <h3 className='text-xs sm:text-sm font-medium text-purple-900'>
+              Ahorros
+            </h3>
+          </div>
+          <p className='text-xl sm:text-2xl lg:text-3xl font-bold text-purple-700 break-words overflow-hidden'>
+            {formatCurrency(totalSavings, currency)}
+          </p>
+          <p className='text-xs text-purple-700 mt-1'>Este mes</p>
         </div>
 
         {/* Card: Balance Final */}

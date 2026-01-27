@@ -60,3 +60,18 @@ export const selectSelectedYear = (state: RootState) =>
   state.myMonth.selectedYear;
 export const selectIsMonthInitialized = (state: RootState) =>
   state.myMonth.isInitialized;
+
+// Selectores de ahorro
+export const selectSavingsTransactions = (state: RootState) =>
+  state.myMonth.transactions.filter((t) => t.type === 'savings');
+
+export const selectTotalSavings = (state: RootState) =>
+  state.myMonth.totalSavings;
+
+export const selectTotalSavingsBalance = (state: RootState) =>
+  state.myMonth.totalSavingsBalance;
+
+export const selectTotalSavingsFromTransactions = (state: RootState) =>
+  state.myMonth.transactions
+    .filter((t) => t.type === 'savings')
+    .reduce((sum, t) => sum + t.value, 0);

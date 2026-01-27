@@ -21,7 +21,10 @@ export interface Transaction {
   // Referencias opcionales según el tipo
   fixedExpenseId?: string; // Para type: 'fixed_expense'
   expectedIncomeId?: string; // Para type: 'expected_income'
-  savingsSourceId?: string; // Para type: 'savings'
+  savingsSourceId?: string; // Para type: 'savings' - destino del ahorro
+
+  // Campos adicionales para ahorros
+  originSource?: string; // Fuente de origen del ahorro (ej: "efectivo", "cuenta bancaria")
 
   createdAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
   updatedAt?: firebase.firestore.Timestamp | firebase.firestore.FieldValue;
@@ -78,6 +81,8 @@ export interface MyMonthState {
   transactions: Transaction[];
   monthlyLiquidity: MonthlyLiquidityState | null; // Estado de liquidez del mes actual
   moneySources: MoneySource[]; // Fuentes de dinero del periodo actual
+  totalSavings: number; // Total de ahorros del período actual
+  totalSavingsBalance: number; // Balance total acumulado en todas las fuentes de ahorro
   loading: boolean;
   error: string | null;
   currentMonthPeriod: string | null; // Periodo del mes actual basado en fecha de corte

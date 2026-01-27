@@ -56,6 +56,7 @@ import {
   deleteTransaction,
   loadMonthlyLiquidity,
 } from '@/Redux/features/my-month/my-month-thunks';
+import { deleteSavingsTransaction } from '@/Redux/features/my-month/savings-thunks';
 import {
   loadMonthlyLiquidityNew,
   updateMonthlyBalances,
@@ -198,7 +199,7 @@ const MyMonth = () => {
     setShowSavingsModal(true);
   };
 
-  const handleDeleteTransaction = async (transactionId: string) => {
+  const handleDeleteTransaction = async (transactionId: string, transactionType?: string) => {
     if (!user?.uid) return;
     const confirmed = await confirm.showConfirm({
       title: 'Eliminar Transacción',
@@ -210,7 +211,14 @@ const MyMonth = () => {
     if (!confirmed) return;
 
     try {
-      await dispatch(deleteTransaction(transactionId)).unwrap();
+      // Si es una transacción de ahorro, usar el thunk específico
+      // que también actualiza savings_sources
+      if (transactionType === 'savings') {
+        await dispatch(deleteSavingsTransaction(transactionId)).unwrap();
+      } else {
+        await dispatch(deleteTransaction(transactionId)).unwrap();
+      }
+      
       await dispatch(
         loadTransactions({
           userId: user.uid,
@@ -366,8 +374,13 @@ const MyMonth = () => {
     )
     .reduce((sum, t) => sum + (t.value ?? 0), 0);
 
-  // Calcular balance final: lo que tenía + ingresos - gastos
-  const finalBalance = displayLiquidity + totalIncomes - totalExpenses;
+  // Calcular ahorros totales: suma de savings
+  const totalSavings = mappedTransactions
+    .filter((t) => t.type === 'savings')
+    .reduce((sum, t) => sum + (t.value ?? 0), 0);
+
+  // Calcular balance final: lo que tenía + ingresos - gastos - ahorros
+  const finalBalance = displayLiquidity + totalIncomes - totalExpenses - totalSavings;
 
   const currency = userConfig?.currency || 'COP';
 
@@ -472,7 +485,7 @@ const MyMonth = () => {
       </div>
 
       {/* Balance Cards */}
-      <div className='grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8'>
+      <div className='grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8'>
         <div className='relative' data-tour='liquidity-card'>
           <BalanceCard
             title='Liquidez Inicial'
@@ -513,6 +526,17 @@ const MyMonth = () => {
                 (t) =>
                   t.type === 'fixed_expense' || t.type === 'regular_expense'
               ).length
+            } transacciones`}
+          />
+        </div>
+        <div data-tour='savings-card'>
+          <BalanceCard
+            title='Total Ahorros'
+            amount={totalSavings}
+            icon={<PiggyBank className='w-5 h-5 text-purple-600' />}
+            variant='savings'
+            subtitle={`${
+              mappedTransactions.filter((t) => t.type === 'savings').length
             } transacciones`}
           />
         </div>

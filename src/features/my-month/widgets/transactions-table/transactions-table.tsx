@@ -28,7 +28,7 @@ interface TransactionsTableProps {
   selectedYear: number;
   activeFilter: TransactionFilter;
   onEdit: (transaction: Transaction) => void;
-  onDelete: (transactionId: string) => void;
+  onDelete: (transactionId: string, transactionType?: string) => void;
 }
 
 const months = [
@@ -280,7 +280,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
                         />
                         <Button
                           onClick={() =>
-                            transaction.id && onDelete(transaction.id)
+                            transaction.id && onDelete(transaction.id, transaction.type)
                           }
                           variant='ghost'
                           size='sm'
@@ -421,7 +421,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
                     Editar
                   </Button>
                   <Button
-                    onClick={() => transaction.id && onDelete(transaction.id)}
+                    onClick={() => transaction.id && onDelete(transaction.id, transaction.type)}
                     variant='ghost'
                     size='sm'
                     className='!px-3 text-red-600 hover:text-red-700 hover:bg-red-50'

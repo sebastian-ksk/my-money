@@ -1,21 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import firebaseApp from 'firebase/app';
 import { useAppDispatch } from '@/Redux/store/hooks';
 import {
-  createTransaction,
-  updateTransaction,
-  loadTransactions,
-} from '@/Redux/features/my-month/my-month-thunks';
-import {
-  createSavingsSource,
-  loadSavingsSources,
-} from '@/Redux/features/config-my-money';
+  createSavingsTransaction,
+  updateSavingsTransaction,
+  loadSavingsTransactions,
+} from '@/Redux/features/my-month/savings-thunks';
+import { loadTransactions } from '@/Redux/features/my-month/my-month-thunks';
 import type { Transaction } from '@/Redux/features/my-month/my-month-models';
 import type { SavingsSource } from '@/Redux/features/config-my-money/config-my-money-models';
 import { Button } from '@/components/ui';
 import ModalWithContent from '@/components/modal-with-content';
+import { formatCurrency } from '@/utils/currency';
 
 interface SavingsModalProps {
   userId: string;
@@ -26,6 +23,15 @@ interface SavingsModalProps {
   onClose: () => void;
   onSave: () => void;
 }
+
+const ORIGIN_SOURCES = [
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'cuenta_bancaria', label: 'Cuenta Bancaria' },
+  { value: 'nequi', label: 'Nequi' },
+  { value: 'daviplata', label: 'Daviplata' },
+  { value: 'tarjeta_debito', label: 'Tarjeta Débito' },
+  { value: 'otro', label: 'Otro' },
+];
 
 const SavingsModal: React.FC<SavingsModalProps> = ({
   userId,
@@ -38,98 +44,83 @@ const SavingsModal: React.FC<SavingsModalProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const [savingsSourceId, setSavingsSourceId] = useState('');
-  const [newSavingsSourceName, setNewSavingsSourceName] = useState('');
+  const [originSource, setOriginSource] = useState('efectivo');
   const [value, setValue] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('efectivo');
+  const [concept, setConcept] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Obtener información de la fuente seleccionada
+  const selectedSource = savingsSources.find((s) => s.id === savingsSourceId);
 
   useEffect(() => {
-    if (editingTransaction) {
+    if (editingTransaction && editingTransaction.type === 'savings') {
       setSavingsSourceId(editingTransaction.savingsSourceId || '');
+      setOriginSource(editingTransaction.originSource || editingTransaction.paymentMethod || 'efectivo');
       setValue(editingTransaction.value?.toString() || '');
-      setPaymentMethod(editingTransaction.paymentMethod || 'efectivo');
+      setConcept(editingTransaction.concept || '');
     } else {
       // Reset form
       setSavingsSourceId('');
-      setNewSavingsSourceName('');
+      setOriginSource('efectivo');
       setValue('');
-      setPaymentMethod('efectivo');
+      setConcept('');
     }
   }, [editingTransaction]);
 
+  const handleSavingsSourceChange = (selectedId: string) => {
+    setSavingsSourceId(selectedId);
+    const source = savingsSources.find((s) => s.id === selectedId);
+    if (source && !concept) {
+      setConcept(`Ahorro a ${source.name}`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !value) return;
+    if (!userId || !savingsSourceId || !value || !originSource) return;
 
-    let finalSavingsSourceId = savingsSourceId;
-
-    // Si el usuario quiere crear un nuevo savings source
-    if (savingsSourceId === 'new' && newSavingsSourceName) {
-      try {
-        const newSource = await dispatch(
-          createSavingsSource({
-            userId,
-            source: {
-              name: newSavingsSourceName,
-              amount: 0,
-            },
-          })
-        ).unwrap();
-
-        if (!newSource.id) {
-          console.error('Error al crear fuente de ahorro: no se obtuvo ID');
-          return;
-        }
-        finalSavingsSourceId = newSource.id;
-        await dispatch(loadSavingsSources(userId));
-      } catch (error) {
-        console.error('Error al crear fuente de ahorro:', error);
-        return;
-      }
-    }
-
-    if (!finalSavingsSourceId) {
-      console.error('Debe seleccionar o crear una fuente de ahorro');
-      return;
-    }
-
-    const savingsSource = savingsSources.find(
-      (ss) => ss.id === finalSavingsSourceId
-    );
-    if (!savingsSource && savingsSourceId !== 'new') {
-      console.error('Fuente de ahorro no encontrada');
-      return;
-    }
+    setIsSubmitting(true);
 
     try {
+      // Convertir a número y redondear para evitar errores de precisión
+      const numericValue = Math.round(Number(value));
+
       if (editingTransaction && editingTransaction.id) {
+        // Actualizar transacción existente
         await dispatch(
-          updateTransaction({
+          updateSavingsTransaction({
             transactionId: editingTransaction.id,
-            transaction: {
-              value: parseFloat(value),
-              paymentMethod,
-            },
+            value: numericValue,
+            originSource,
+            concept: concept || undefined,
           })
         ).unwrap();
       } else {
+        // Crear nueva transacción de ahorro
         await dispatch(
-          createTransaction({
+          createSavingsTransaction({
             userId,
-            transaction: {
-              type: 'savings',
-              value: parseFloat(value),
-              concept: savingsSource?.name || newSavingsSourceName,
-              paymentMethod,
-              date: firebaseApp.firestore.Timestamp.fromDate(new Date()),
-              monthPeriod,
-              savingsSourceId: finalSavingsSourceId,
-            },
+            monthPeriod,
+            savingsSourceId,
+            originSource,
+            value: numericValue,
+            concept: concept || undefined,
+            date: new Date(),
           })
         ).unwrap();
       }
 
+      // Recargar transacciones
       await dispatch(
         loadTransactions({
+          userId,
+          monthPeriod,
+        })
+      ).unwrap();
+
+      // Recargar datos de ahorros
+      await dispatch(
+        loadSavingsTransactions({
           userId,
           monthPeriod,
         })
@@ -139,6 +130,9 @@ const SavingsModal: React.FC<SavingsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error al guardar ahorro:', error);
+      alert(error instanceof Error ? error.message : 'Error al guardar ahorro');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -150,86 +144,126 @@ const SavingsModal: React.FC<SavingsModalProps> = ({
       maxWidth='md'
     >
       <form onSubmit={handleSubmit}>
+        {/* Destino del ahorro */}
         <div className='mb-4'>
           <label className='block text-sm font-medium mb-2 text-primary-medium'>
-            Fuente de Ahorro *
+            Destino del Ahorro *
           </label>
           <select
             required
             value={savingsSourceId}
-            onChange={(e) => {
-              setSavingsSourceId(e.target.value);
-              setNewSavingsSourceName('');
-            }}
+            onChange={(e) => handleSavingsSourceChange(e.target.value)}
             disabled={!!editingTransaction}
             className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-zinc-900 bg-white disabled:bg-zinc-100 disabled:text-zinc-600'
-            aria-label='Fuente de ahorro'
+            aria-label='Destino del ahorro'
           >
             <option value=''>Seleccione una fuente de ahorro</option>
-            {savingsSources.map((ss) => (
-              <option key={ss.id} value={ss.id}>
-                {ss.name}
+            {savingsSources.length === 0 ? (
+              <option value='' disabled>
+                No hay fuentes de ahorro configuradas. Configúralas primero.
               </option>
-            ))}
-            {!editingTransaction && (
-              <option value='new'>+ Crear nueva fuente de ahorro</option>
+            ) : (
+              savingsSources.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.name} - Balance: {formatCurrency(source.currentBalance || 0, currency)}
+                </option>
+              ))
             )}
           </select>
+          {selectedSource && (
+            <p className='text-xs text-zinc-500 mt-1'>
+              Balance actual: {formatCurrency(selectedSource.currentBalance || 0, currency)}
+              {selectedSource.amount > 0 && (
+                <span> (Inicial: {formatCurrency(selectedSource.amount, currency)})</span>
+              )}
+            </p>
+          )}
         </div>
 
-        {savingsSourceId === 'new' && (
-          <div className='mb-4'>
-            <label className='block text-sm font-medium mb-2 text-primary-medium'>
-              Nombre de la Nueva Fuente de Ahorro *
-            </label>
-            <input
-              type='text'
-              required
-              value={newSavingsSourceName}
-              onChange={(e) => setNewSavingsSourceName(e.target.value)}
-              className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-zinc-900 bg-white'
-              placeholder='Ej: Cuenta de ahorros, Caja fuerte, etc.'
-              aria-label='Nombre de la nueva fuente de ahorro'
-            />
-          </div>
-        )}
-
+        {/* Origen del dinero */}
         <div className='mb-4'>
           <label className='block text-sm font-medium mb-2 text-primary-medium'>
-            Valor *
+            Origen del Dinero *
+          </label>
+          <select
+            required
+            value={originSource}
+            onChange={(e) => setOriginSource(e.target.value)}
+            className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-zinc-900 bg-white'
+            aria-label='Origen del dinero'
+          >
+            {ORIGIN_SOURCES.map((source) => (
+              <option key={source.value} value={source.value}>
+                {source.label}
+              </option>
+            ))}
+          </select>
+          <p className='text-xs text-zinc-500 mt-1'>
+            De dónde viene el dinero que vas a ahorrar
+          </p>
+        </div>
+
+        {/* Monto */}
+        <div className='mb-4'>
+          <label className='block text-sm font-medium mb-2 text-primary-medium'>
+            Monto a Ahorrar *
           </label>
           <input
             type='number'
             step='0.01'
+            min='0.01'
             required
             value={value}
             onChange={(e) => setValue(e.target.value)}
             className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-zinc-900 bg-white'
             placeholder='0.00'
-            aria-label='Valor'
+            aria-label='Monto a ahorrar'
           />
         </div>
 
+        {/* Concepto (opcional) */}
         <div className='mb-6'>
           <label className='block text-sm font-medium mb-2 text-primary-medium'>
-            Medio de Pago *
+            Concepto (opcional)
           </label>
-          <select
-            required
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
+          <input
+            type='text'
+            value={concept}
+            onChange={(e) => setConcept(e.target.value)}
             className='w-full px-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light text-zinc-900 bg-white'
-            aria-label='Medio de pago'
-          >
-            <option value='efectivo'>Efectivo</option>
-            <option value='tarjeta_debito'>Tarjeta Débito</option>
-            <option value='tarjeta_credito'>Tarjeta Crédito</option>
-            <option value='transferencia'>Transferencia</option>
-            <option value='nequi'>Nequi</option>
-            <option value='daviplata'>Daviplata</option>
-            <option value='otro'>Otro</option>
-          </select>
+            placeholder='Descripción del ahorro'
+            aria-label='Concepto'
+          />
         </div>
+
+        {/* Resumen */}
+        {savingsSourceId && value && (
+          <div className='mb-6 p-4 bg-green-50 border border-green-200 rounded-lg'>
+            <h4 className='text-sm font-medium text-green-800 mb-2'>Resumen</h4>
+            <div className='text-sm text-green-700 space-y-1'>
+              <p>
+                <span className='font-medium'>Monto:</span>{' '}
+                {formatCurrency(parseFloat(value) || 0, currency)}
+              </p>
+              <p>
+                <span className='font-medium'>De:</span>{' '}
+                {ORIGIN_SOURCES.find((s) => s.value === originSource)?.label}
+              </p>
+              <p>
+                <span className='font-medium'>A:</span> {selectedSource?.name}
+              </p>
+              {selectedSource && (
+                <p>
+                  <span className='font-medium'>Nuevo balance:</span>{' '}
+                  {formatCurrency(
+                    (selectedSource.currentBalance || 0) + (parseFloat(value) || 0),
+                    currency
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className='flex gap-3'>
           <Button
@@ -238,6 +272,7 @@ const SavingsModal: React.FC<SavingsModalProps> = ({
             variant='outline'
             size='default'
             className='flex-1'
+            disabled={isSubmitting}
           >
             Cancelar
           </Button>
@@ -246,13 +281,9 @@ const SavingsModal: React.FC<SavingsModalProps> = ({
             variant='secondary'
             size='default'
             className='flex-1'
-            disabled={
-              !savingsSourceId ||
-              !value ||
-              (savingsSourceId === 'new' && !newSavingsSourceName)
-            }
+            disabled={!savingsSourceId || !value || !originSource || isSubmitting}
           >
-            Guardar
+            {isSubmitting ? 'Guardando...' : 'Guardar'}
           </Button>
         </div>
       </form>
@@ -261,4 +292,3 @@ const SavingsModal: React.FC<SavingsModalProps> = ({
 };
 
 export default SavingsModal;
-
