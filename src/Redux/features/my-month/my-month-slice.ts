@@ -15,7 +15,7 @@ import {
 import {
   loadMonthlyLiquidityNew,
   updateMonthlyBalances,
-  updateMonthlyLiquidity as updateMonthlyLiquidityNew,
+  updateMonthlyLiquidityData,
   addLiquiditySourceNew,
   updateLiquiditySourceNew,
   deleteLiquiditySourceNew,
@@ -258,8 +258,8 @@ const myMonthSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      // Update Monthly Liquidity New
-      .addCase(updateMonthlyLiquidityNew.fulfilled, (state, action) => {
+      // Update Monthly Liquidity Data
+      .addCase(updateMonthlyLiquidityData.fulfilled, (state, action) => {
         state.monthlyLiquidity = action.payload;
       })
       // Add Liquidity Source New

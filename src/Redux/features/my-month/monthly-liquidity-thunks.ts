@@ -94,9 +94,9 @@ export const updateMonthlyBalances = createAsyncThunk(
   }
 );
 
-// ========== Actualizar liquidez mensual ==========
-export const updateMonthlyLiquidity = createAsyncThunk(
-  'myMonth/updateMonthlyLiquidityNew',
+// ========== Actualizar liquidez mensual con data ==========
+export const updateMonthlyLiquidityData = createAsyncThunk(
+  'myMonth/updateMonthlyLiquidityData',
   async (
     {
       userId,

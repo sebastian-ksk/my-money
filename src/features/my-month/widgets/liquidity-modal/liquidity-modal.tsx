@@ -161,7 +161,7 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
             )}
           </div>
           <div className='flex gap-2'>
-            <Button type='submit' variant='primary' size='default' className='flex-1'>
+            <Button type='submit' variant='default' size='default' className='flex-1'>
               Guardar
             </Button>
             <Button
