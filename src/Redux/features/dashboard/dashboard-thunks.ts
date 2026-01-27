@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { dashboardService } from '@/services/Firebase/dashboard-service';
+import { dashboardApiService } from '@/services/Firebase/dashboard-api-service';
 import type { RootState } from '@/Redux/store/types';
 import type {
   DashboardStats,
@@ -7,6 +8,10 @@ import type {
   ExpenseDistribution,
   PeriodSummary,
   PeriodFilter,
+  FinancialStats,
+  MonthlyFinancialData,
+  GlobalSummary,
+  CompleteDashboard,
 } from './dashboard-models';
 
 // Convertir filtro de periodo a número de meses
@@ -204,6 +209,129 @@ export const loadDashboardData = createAsyncThunk<
       console.error('Error en loadDashboardData:', error);
       return rejectWithValue(
         (error as Error).message || 'Error al cargar datos del dashboard'
+      );
+    }
+  }
+);
+
+// ========== NUEVOS THUNKS PARA API DASHBOARD ==========
+
+// Cargar dashboard completo usando la nueva API
+export const loadCompleteDashboard = createAsyncThunk<
+  CompleteDashboard,
+  { userId: string; period?: PeriodFilter; monthResetDay?: number },
+  { rejectValue: string; state: RootState }
+>(
+  'dashboard/loadCompleteDashboard',
+  async (
+    { userId, period = '6m', monthResetDay },
+    { rejectWithValue, getState }
+  ) => {
+    try {
+      const state = getState();
+      const resetDay =
+        monthResetDay ?? state.configMyMoney.userConfig?.monthResetDay ?? 1;
+
+      const dashboard = await dashboardApiService.getCompleteDashboard(
+        userId,
+        period,
+        resetDay
+      );
+
+      return dashboard;
+    } catch (error: unknown) {
+      console.error('Error en loadCompleteDashboard:', error);
+      return rejectWithValue(
+        (error as Error).message || 'Error al cargar dashboard completo'
+      );
+    }
+  }
+);
+
+// Cargar estadísticas financieras
+export const loadFinancialStats = createAsyncThunk<
+  FinancialStats,
+  { userId: string; period?: PeriodFilter; monthResetDay?: number },
+  { rejectValue: string; state: RootState }
+>(
+  'dashboard/loadFinancialStats',
+  async (
+    { userId, period = '6m', monthResetDay },
+    { rejectWithValue, getState }
+  ) => {
+    try {
+      const state = getState();
+      const resetDay =
+        monthResetDay ?? state.configMyMoney.userConfig?.monthResetDay ?? 1;
+
+      const stats = await dashboardApiService.getFinancialStats(
+        userId,
+        period,
+        resetDay
+      );
+
+      return stats;
+    } catch (error: unknown) {
+      console.error('Error en loadFinancialStats:', error);
+      return rejectWithValue(
+        (error as Error).message || 'Error al cargar estadísticas financieras'
+      );
+    }
+  }
+);
+
+// Cargar historial financiero
+export const loadFinancialHistory = createAsyncThunk<
+  MonthlyFinancialData[],
+  { userId: string; months?: number; monthResetDay?: number },
+  { rejectValue: string; state: RootState }
+>(
+  'dashboard/loadFinancialHistory',
+  async (
+    { userId, months = 12, monthResetDay },
+    { rejectWithValue, getState }
+  ) => {
+    try {
+      const state = getState();
+      const resetDay =
+        monthResetDay ?? state.configMyMoney.userConfig?.monthResetDay ?? 1;
+
+      const history = await dashboardApiService.getFinancialHistory(
+        userId,
+        months,
+        resetDay
+      );
+
+      return history;
+    } catch (error: unknown) {
+      console.error('Error en loadFinancialHistory:', error);
+      return rejectWithValue(
+        (error as Error).message || 'Error al cargar historial financiero'
+      );
+    }
+  }
+);
+
+// Cargar resumen global
+export const loadGlobalSummary = createAsyncThunk<
+  GlobalSummary,
+  { userId: string; monthResetDay?: number },
+  { rejectValue: string; state: RootState }
+>(
+  'dashboard/loadGlobalSummary',
+  async ({ userId, monthResetDay }, { rejectWithValue, getState }) => {
+    try {
+      const state = getState();
+      const resetDay =
+        monthResetDay ?? state.configMyMoney.userConfig?.monthResetDay ?? 1;
+
+      const summary = await dashboardApiService.getGlobalSummary(userId, resetDay);
+
+      return summary;
+    } catch (error: unknown) {
+      console.error('Error en loadGlobalSummary:', error);
+      return rejectWithValue(
+        (error as Error).message || 'Error al cargar resumen global'
       );
     }
   }

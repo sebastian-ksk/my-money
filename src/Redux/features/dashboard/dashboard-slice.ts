@@ -5,6 +5,10 @@ import {
   loadExpenseDistribution,
   loadPeriodSummary,
   loadDashboardData,
+  loadCompleteDashboard,
+  loadFinancialStats,
+  loadFinancialHistory,
+  loadGlobalSummary,
 } from './dashboard-thunks';
 import { logoutUser } from '../auth/auth-thunks';
 import type { DashboardState, PeriodFilter } from './dashboard-models';
@@ -17,6 +21,14 @@ const initialState: DashboardState = {
   selectedPeriod: '6m',
   loading: false,
   error: null,
+  // Estados para datos avanzados
+  financialStats: null,
+  monthlyFinancialData: [],
+  globalSummary: null,
+  currentMonthData: null,
+  expensesByCategory: [],
+  incomesByCategory: [],
+  transactionsByPaymentMethod: [],
 };
 
 const dashboardSlice = createSlice({
@@ -107,7 +119,69 @@ const dashboardSlice = createSlice({
       })
 
       // Reset on logout
-      .addCase(logoutUser.fulfilled, () => initialState);
+      .addCase(logoutUser.fulfilled, () => initialState)
+
+      // Load Complete Dashboard
+      .addCase(loadCompleteDashboard.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadCompleteDashboard.fulfilled, (state, action) => {
+        state.loading = false;
+        state.financialStats = action.payload.stats;
+        state.monthlyFinancialData = action.payload.monthlyData;
+        state.currentMonthData = action.payload.currentMonth;
+        state.globalSummary = action.payload.summary;
+        state.expensesByCategory = action.payload.expensesByCategory;
+        state.incomesByCategory = action.payload.incomesByCategory;
+        state.transactionsByPaymentMethod = action.payload.transactionsByPaymentMethod;
+      })
+      .addCase(loadCompleteDashboard.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Load Financial Stats
+      .addCase(loadFinancialStats.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadFinancialStats.fulfilled, (state, action) => {
+        state.loading = false;
+        state.financialStats = action.payload;
+      })
+      .addCase(loadFinancialStats.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Load Financial History
+      .addCase(loadFinancialHistory.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadFinancialHistory.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthlyFinancialData = action.payload;
+      })
+      .addCase(loadFinancialHistory.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Load Global Summary
+      .addCase(loadGlobalSummary.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadGlobalSummary.fulfilled, (state, action) => {
+        state.loading = false;
+        state.globalSummary = action.payload;
+      })
+      .addCase(loadGlobalSummary.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
   },
 });
 
