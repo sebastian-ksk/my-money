@@ -55,8 +55,11 @@ import {
   loadTransactions,
   deleteTransaction,
   loadMonthlyLiquidity,
-  updateMonthBalances,
 } from '@/Redux/features/my-month/my-month-thunks';
+import {
+  loadMonthlyLiquidityNew,
+  updateMonthlyBalances,
+} from '@/Redux/features/my-month/monthly-liquidity-thunks';
 import { selectEffectiveInitialLiquidity } from '@/Redux/features/initial-liquidity';
 import {
   loadInitialLiquidity,
@@ -146,10 +149,9 @@ const MyMonth = () => {
         .then(() => {
           // Actualizar balances después de cargar transacciones
           return dispatch(
-            updateMonthBalances({
+            updateMonthlyBalances({
               userId: user.uid,
               monthPeriod: currentPeriod,
-              dayOfMonth: userConfig.monthResetDay,
             })
           );
         })
@@ -158,7 +160,7 @@ const MyMonth = () => {
         });
 
       dispatch(
-        loadMonthlyLiquidity({
+        loadMonthlyLiquidityNew({
           userId: user.uid,
           monthPeriod: currentPeriod,
           dayOfMonth: userConfig.monthResetDay,
@@ -218,10 +220,9 @@ const MyMonth = () => {
       // Actualizar balances después de eliminar
       if (userConfig) {
         await dispatch(
-          updateMonthBalances({
+          updateMonthlyBalances({
             userId: user.uid,
             monthPeriod: currentPeriod,
-            dayOfMonth: userConfig.monthResetDay,
           })
         ).unwrap();
       }
@@ -601,10 +602,9 @@ const MyMonth = () => {
             // Actualizar balances después de guardar
             if (user?.uid && userConfig) {
               await dispatch(
-                updateMonthBalances({
+                updateMonthlyBalances({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                  dayOfMonth: userConfig.monthResetDay,
                 })
               ).unwrap();
             }
@@ -640,10 +640,9 @@ const MyMonth = () => {
             // Actualizar balances después de guardar
             if (user?.uid && userConfig) {
               await dispatch(
-                updateMonthBalances({
+                updateMonthlyBalances({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                  dayOfMonth: userConfig.monthResetDay,
                 })
               ).unwrap();
             }
@@ -685,10 +684,9 @@ const MyMonth = () => {
             // Actualizar balances después de guardar
             if (user?.uid && userConfig) {
               await dispatch(
-                updateMonthBalances({
+                updateMonthlyBalances({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                  dayOfMonth: userConfig.monthResetDay,
                 })
               ).unwrap();
             }
@@ -735,10 +733,9 @@ const MyMonth = () => {
             // Actualizar balances después de guardar
             if (user?.uid && userConfig) {
               await dispatch(
-                updateMonthBalances({
+                updateMonthlyBalances({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                  dayOfMonth: userConfig.monthResetDay,
                 })
               ).unwrap();
             }

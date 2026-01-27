@@ -13,6 +13,14 @@ import {
   deleteLiquiditySource,
 } from './my-month-thunks';
 import {
+  loadMonthlyLiquidityNew,
+  updateMonthlyBalances,
+  updateMonthlyLiquidity as updateMonthlyLiquidityNew,
+  addLiquiditySourceNew,
+  updateLiquiditySourceNew,
+  deleteLiquiditySourceNew,
+} from './monthly-liquidity-thunks';
+import {
   loadSourcesByPeriod,
   loadAllSources,
   createMoneySource,
@@ -21,7 +29,7 @@ import {
   loadPreviousMonthSources,
 } from './sources-money-thunks';
 import { logoutUser } from '../auth/auth-thunks';
-import type { MyMonthState, Transaction } from './my-month-models';
+import type { MyMonthState } from './my-month-models';
 
 const currentDate = new Date();
 const initialState: MyMonthState = {
@@ -220,8 +228,51 @@ const myMonthSlice = createSlice({
         );
       })
       // Load Previous Month Sources
-      .addCase(loadPreviousMonthSources.fulfilled, (state, action) => {
+      .addCase(loadPreviousMonthSources.fulfilled, () => {
         // No actualizar el estado, solo se usa para obtener datos del mes anterior
+      })
+      // ========== NEW Monthly Liquidity Thunks ==========
+      // Load Monthly Liquidity New
+      .addCase(loadMonthlyLiquidityNew.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadMonthlyLiquidityNew.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthlyLiquidity = action.payload;
+      })
+      .addCase(loadMonthlyLiquidityNew.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update Monthly Balances
+      .addCase(updateMonthlyBalances.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateMonthlyBalances.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthlyLiquidity = action.payload;
+      })
+      .addCase(updateMonthlyBalances.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update Monthly Liquidity New
+      .addCase(updateMonthlyLiquidityNew.fulfilled, (state, action) => {
+        state.monthlyLiquidity = action.payload;
+      })
+      // Add Liquidity Source New
+      .addCase(addLiquiditySourceNew.fulfilled, (state, action) => {
+        state.monthlyLiquidity = action.payload;
+      })
+      // Update Liquidity Source New
+      .addCase(updateLiquiditySourceNew.fulfilled, (state, action) => {
+        state.monthlyLiquidity = action.payload;
+      })
+      // Delete Liquidity Source New
+      .addCase(deleteLiquiditySourceNew.fulfilled, (state, action) => {
+        state.monthlyLiquidity = action.payload;
       })
       // Reset on logout
       .addCase(logoutUser.fulfilled, () => {
