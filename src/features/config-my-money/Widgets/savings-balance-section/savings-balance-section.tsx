@@ -67,6 +67,7 @@ export default function SavingsBalanceSection() {
           source: {
             name: formData.name,
             amount: numericAmount,
+            currentBalance: numericAmount, // El balance inicial es igual al amount
           },
         })
       );

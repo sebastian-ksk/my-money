@@ -48,31 +48,39 @@ const months = [
 
 const getTransactionTypeLabel = (type: TransactionType): string => {
   const types: Record<string, string> = {
-    fixed_expense: 'Gasto Fijo',
+    fixed_expense: 'Fijo',
     regular_expense: 'Gasto',
-    expected_income: 'Ingreso Esperado',
-    unexpected_income: 'Ingreso Inesperado',
+    expected_income: 'Ingreso',
+    unexpected_income: 'Extra',
     savings: 'Ahorro',
   };
   return types[type] || 'Gasto';
 };
 
-const getTransactionTypeColor = (
+const getTransactionTypeStyles = (
   type: TransactionType,
   isPending: boolean
-): string => {
-  if (isPending) return 'bg-amber-100 text-amber-800 border-amber-300';
-  const colors: Record<string, string> = {
-    fixed_expense: 'bg-red-100 text-red-800 border-red-300',
-    regular_expense: 'bg-orange-100 text-orange-800 border-orange-300',
-    expected_income: 'bg-blue-100 text-blue-800 border-blue-300',
-    unexpected_income: 'bg-green-100 text-green-800 border-green-300',
-    savings: 'bg-purple-100 text-purple-800 border-purple-300',
+): { bg: string; text: string; dot: string } => {
+  if (isPending) return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' };
+  const styles: Record<string, { bg: string; text: string; dot: string }> = {
+    fixed_expense: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-400' },
+    regular_expense: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-400' },
+    expected_income: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400' },
+    unexpected_income: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-400' },
+    savings: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-400' },
   };
-  return colors[type] || 'bg-gray-100 text-gray-800 border-gray-300';
+  return styles[type] || { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-400' };
 };
 
 const formatDate = (timestamp: firebaseApp.firestore.Timestamp): string => {
+  const date = timestamp.toDate();
+  return date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+  });
+};
+
+const formatDateFull = (timestamp: firebaseApp.firestore.Timestamp): string => {
   const date = timestamp.toDate();
   return date.toLocaleDateString('es-ES', {
     day: '2-digit',
@@ -99,7 +107,6 @@ const filterTransactions = (
       (t) => t.type === 'expected_income' || t.type === 'unexpected_income'
     );
   }
-  // Filtros específicos por tipo de transacción
   if (
     filter === 'fixed_expense' ||
     filter === 'regular_expense' ||
@@ -110,6 +117,10 @@ const filterTransactions = (
     return transactions.filter((t) => t.type === filter);
   }
   return transactions;
+};
+
+const isIncomeType = (type: TransactionType): boolean => {
+  return type === 'expected_income' || type === 'unexpected_income';
 };
 
 export const TransactionsTable: React.FC<TransactionsTableProps> = ({
@@ -126,329 +137,170 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
 
   if (loading) {
     return (
-      <div className='text-center py-12'>
-        <div className='inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-dark mb-4'></div>
-        <p className='text-zinc-600'>Cargando transacciones...</p>
+      <div className='flex items-center justify-center py-12'>
+        <div className='flex flex-col items-center gap-3'>
+          <div className='w-8 h-8 border-3 border-primary-light border-t-primary-dark rounded-full animate-spin'></div>
+          <p className='text-sm text-slate-500'>Cargando...</p>
+        </div>
       </div>
     );
   }
 
   if (filteredTransactions.length === 0) {
     return (
-      <div className='text-center py-12 bg-zinc-50 rounded-xl border-2 border-dashed border-zinc-200'>
-        <svg
-          className='w-16 h-16 text-zinc-400 mx-auto mb-4'
-          fill='none'
-          stroke='currentColor'
-          viewBox='0 0 24 24'
-        >
-          <path
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            strokeWidth={2}
-            d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
-          />
-        </svg>
-        <p className='text-zinc-600 text-lg font-medium'>
-          No hay transacciones registradas
+      <div className='flex flex-col items-center justify-center py-12 px-4'>
+        <div className='w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4'>
+          <svg
+            className='w-8 h-8 text-slate-400'
+            fill='none'
+            stroke='currentColor'
+            viewBox='0 0 24 24'
+          >
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              strokeWidth={1.5}
+              d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+            />
+          </svg>
+        </div>
+        <p className='text-slate-600 font-medium text-center'>
+          Sin transacciones
         </p>
-        <p className='text-zinc-500 text-sm mt-1'>
-          en {months[selectedMonth]} {selectedYear}
+        <p className='text-slate-400 text-sm text-center mt-1'>
+          {months[selectedMonth]} {selectedYear}
         </p>
       </div>
     );
   }
 
   return (
-    <>
-      {/* Desktop Table View */}
-      <div className='hidden lg:block overflow-x-auto'>
-        <table className='w-full'>
-          <thead>
-            <tr className='border-b-2 border-zinc-300 bg-zinc-50'>
-              <th className='text-left py-4 px-4 font-semibold text-primary-medium text-sm'>
-                Fecha
-              </th>
-              <th className='text-left py-4 px-4 font-semibold text-primary-medium text-sm'>
-                Concepto
-              </th>
-              <th className='text-left py-4 px-4 font-semibold text-primary-medium text-sm'>
-                Tipo
-              </th>
-              <th className='text-left py-4 px-4 font-semibold text-primary-medium text-sm'>
-                Medio de Pago
-              </th>
-              <th className='text-right py-4 px-4 font-semibold text-primary-medium text-sm'>
-                Esperado
-              </th>
-              <th className='text-right py-4 px-4 font-semibold text-primary-medium text-sm'>
-                Real
-              </th>
-              <th className='text-center py-4 px-4 font-semibold text-primary-medium text-sm w-24'>
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTransactions.map((transaction) => {
-              const isPending = Boolean(transaction.id?.startsWith('pending-'));
-              return (
-                <tr
-                  key={transaction.id}
-                  className={`border-b border-zinc-200 hover:bg-zinc-50 transition-colors ${
-                    isPending ? 'bg-amber-50/50' : ''
-                  }`}
-                >
-                  <td className='py-4 px-4 text-zinc-700 text-sm'>
-                    {formatDate(transaction.date)}
-                  </td>
-                  <td className='py-4 px-4'>
-                    <div className='flex items-center gap-2'>
-                      <span className='font-medium text-zinc-900'>
-                        {transaction.concept}
-                      </span>
-                      {isPending && (
-                        <span className='text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-300'>
-                          Pendiente
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className='py-4 px-4'>
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getTransactionTypeColor(
-                        transaction.type,
-                        isPending
-                      )}`}
-                    >
+    <div className='space-y-2'>
+      {/* Vista unificada - Cards compactas */}
+      {filteredTransactions.map((transaction) => {
+        const isPending = Boolean(transaction.id?.startsWith('pending-'));
+        const styles = getTransactionTypeStyles(transaction.type, isPending);
+        const isIncome = isIncomeType(transaction.type);
+
+        return (
+          <div
+            key={transaction.id}
+            className={`group flex items-center gap-3 p-3 rounded-xl border transition-all ${
+              isPending
+                ? 'bg-amber-50/50 border-amber-200'
+                : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm'
+            }`}
+          >
+            {/* Indicador de tipo */}
+            <div className={`w-1 h-12 rounded-full ${styles.dot}`}></div>
+
+            {/* Contenido principal */}
+            <div className='flex-1 min-w-0'>
+              <div className='flex items-start justify-between gap-2'>
+                <div className='min-w-0 flex-1'>
+                  <p className='font-medium text-slate-800 truncate text-sm sm:text-base'>
+                    {transaction.concept}
+                  </p>
+                  <div className='flex items-center gap-2 mt-0.5'>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${styles.bg} ${styles.text}`}>
                       {getTransactionTypeLabel(transaction.type)}
                     </span>
-                  </td>
-                  <td className='py-4 px-4 text-zinc-600 text-sm'>
-                    {transaction.paymentMethod}
-                  </td>
-                  <td className='py-4 px-4 text-right text-zinc-500 text-sm'>
-                    {transaction.expectedAmount !== null &&
-                    transaction.expectedAmount !== undefined
-                      ? formatCurrency(transaction.expectedAmount, currency)
-                      : '-'}
-                  </td>
-                  <td
-                    className={`py-4 px-4 text-right font-semibold text-sm ${
-                      transaction.type === 'expected_income' ||
-                      transaction.type === 'unexpected_income'
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {transaction.type === 'expected_income' ||
-                    transaction.type === 'unexpected_income'
-                      ? '+'
-                      : '-'}
-                    {formatCurrency(transaction.value, currency)}
-                  </td>
-                  <td className='py-4 px-4 text-center'>
-                    {!isPending && transaction.id ? (
-                      <div className='flex justify-center items-center gap-2'>
-                        <Button
-                          onClick={() => {
-                            if (
-                              transaction.id &&
-                              !transaction.id.startsWith('pending-')
-                            ) {
-                              onEdit(transaction as Transaction);
-                            }
-                          }}
-                          variant='ghost'
-                          size='sm'
-                          icon={
-                            <svg
-                              className='w-4 h-4'
-                              fill='none'
-                              stroke='currentColor'
-                              viewBox='0 0 24 24'
-                            >
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                strokeWidth={2}
-                                d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
-                              />
-                            </svg>
-                          }
-                          iconOnly
-                        />
-                        <Button
-                          onClick={() =>
-                            transaction.id && onDelete(transaction.id, transaction.type)
-                          }
-                          variant='ghost'
-                          size='sm'
-                          icon={
-                            <svg
-                              className='w-4 h-4'
-                              fill='none'
-                              stroke='currentColor'
-                              viewBox='0 0 24 24'
-                            >
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                strokeWidth={2}
-                                d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
-                              />
-                            </svg>
-                          }
-                          iconOnly
-                        />
-                      </div>
-                    ) : (
-                      <span className='text-zinc-400 text-xs'>Pendiente</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile/Tablet Card View */}
-      <div className='lg:hidden space-y-3'>
-        {filteredTransactions.map((transaction) => {
-          const isPending = Boolean(transaction.id?.startsWith('pending-'));
-          return (
-            <div
-              key={transaction.id}
-              className={`bg-white border-2 rounded-xl p-4 shadow-sm transition-all ${
-                isPending
-                  ? 'border-amber-300 bg-amber-50/30'
-                  : 'border-zinc-200 hover:border-primary-light hover:shadow-md'
-              }`}
-            >
-              <div className='flex items-start justify-between mb-3'>
-                <div className='flex-1'>
-                  <div className='flex items-center gap-2 mb-2'>
-                    <h4 className='font-semibold text-zinc-900 text-base'>
-                      {transaction.concept}
-                    </h4>
+                    <span className='text-xs text-slate-400'>
+                      {formatDate(transaction.date)}
+                    </span>
                     {isPending && (
-                      <span className='text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-300'>
+                      <span className='text-xs text-amber-600 font-medium'>
                         Pendiente
                       </span>
                     )}
                   </div>
-                  <div className='flex flex-wrap items-center gap-2'>
-                    <span
-                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium border ${getTransactionTypeColor(
-                        transaction.type,
-                        isPending
-                      )}`}
-                    >
-                      {getTransactionTypeLabel(transaction.type)}
-                    </span>
-                    <span className='text-xs text-zinc-500'>
-                      {formatDate(transaction.date)}
-                    </span>
-                    {transaction.paymentMethod !== '-' && (
-                      <span className='text-xs text-zinc-500'>
-                        • {transaction.paymentMethod}
-                      </span>
-                    )}
-                  </div>
                 </div>
-              </div>
 
-              <div className='grid grid-cols-2 gap-3 mb-3 pt-3 border-t border-zinc-200'>
-                <div>
-                  <p className='text-xs text-zinc-500 mb-1'>Valor Esperado</p>
-                  <p className='text-sm font-medium text-zinc-700'>
-                    {transaction.expectedAmount !== null &&
-                    transaction.expectedAmount !== undefined
-                      ? formatCurrency(transaction.expectedAmount, currency)
-                      : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className='text-xs text-zinc-500 mb-1'>Valor Real</p>
+                {/* Monto */}
+                <div className='text-right shrink-0'>
                   <p
-                    className={`text-sm font-bold ${
-                      transaction.type === 'expected_income' ||
-                      transaction.type === 'unexpected_income'
-                        ? 'text-green-600'
-                        : 'text-red-600'
+                    className={`font-bold text-sm sm:text-base ${
+                      isIncome ? 'text-green-600' : 'text-slate-800'
                     }`}
                   >
-                    {transaction.type === 'expected_income' ||
-                    transaction.type === 'unexpected_income'
-                      ? '+'
-                      : '-'}
+                    {isIncome ? '+' : '-'}
                     {formatCurrency(transaction.value, currency)}
                   </p>
+                  {transaction.expectedAmount !== null &&
+                    transaction.expectedAmount !== undefined &&
+                    transaction.expectedAmount !== transaction.value && (
+                      <p className='text-xs text-slate-400 line-through'>
+                        {formatCurrency(transaction.expectedAmount, currency)}
+                      </p>
+                    )}
                 </div>
               </div>
-
-              {!isPending && transaction.id && (
-                <div className='flex justify-end gap-2 pt-3 border-t border-zinc-200'>
-                  <Button
-                    onClick={() => {
-                      if (
-                        transaction.id &&
-                        !transaction.id.startsWith('pending-')
-                      ) {
-                        onEdit(transaction as Transaction);
-                      }
-                    }}
-                    variant='ghost'
-                    size='sm'
-                    className='!px-3'
-                    icon={
-                      <svg
-                        className='w-4 h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
-                        />
-                      </svg>
-                    }
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    onClick={() => transaction.id && onDelete(transaction.id, transaction.type)}
-                    variant='ghost'
-                    size='sm'
-                    className='!px-3 text-red-600 hover:text-red-700 hover:bg-red-50'
-                    icon={
-                      <svg
-                        className='w-4 h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
-                        />
-                      </svg>
-                    }
-                  >
-                    Eliminar
-                  </Button>
-                </div>
-              )}
             </div>
-          );
-        })}
+
+            {/* Acciones */}
+            {!isPending && transaction.id && (
+              <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                <button
+                  onClick={() => onEdit(transaction as Transaction)}
+                  className='p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors'
+                  title='Editar'
+                >
+                  <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onDelete(transaction.id!, transaction.type)}
+                  className='p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors'
+                  title='Eliminar'
+                >
+                  <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {/* Acciones móviles - siempre visibles */}
+            {!isPending && transaction.id && (
+              <div className='flex items-center gap-1 sm:hidden'>
+                <button
+                  onClick={() => onEdit(transaction as Transaction)}
+                  className='p-2 rounded-lg bg-slate-100 text-slate-600'
+                  title='Editar'
+                  aria-label='Editar transacción'
+                >
+                  <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Resumen al final */}
+      <div className='mt-4 pt-4 border-t border-slate-200'>
+        <p className='text-xs text-slate-400 text-center'>
+          {filteredTransactions.length} transacción{filteredTransactions.length !== 1 ? 'es' : ''}
+        </p>
       </div>
-    </>
+    </div>
   );
 };

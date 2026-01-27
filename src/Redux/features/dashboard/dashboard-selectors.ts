@@ -151,3 +151,16 @@ export const selectTopExpenseCategories = (state: RootState) =>
 
 export const selectTopIncomeCategories = (state: RootState) =>
   state.dashboard.globalSummary?.topIncomeCategories ?? [];
+
+// Selectores para savings_sources (balance acumulado en fuentes de ahorro)
+export const selectTotalSavingsBalance = (state: RootState) =>
+  state.dashboard.financialStats?.totalSavingsBalance ?? 0;
+
+export const selectSavingsSourcesCount = (state: RootState) =>
+  state.dashboard.financialStats?.savingsSourcesCount ?? 0;
+
+export const selectSavingsSources = (state: RootState) =>
+  state.dashboard.financialStats?.savingsSources ?? [];
+
+export const selectGlobalSavingsSources = (state: RootState) =>
+  state.dashboard.globalSummary?.savingsSources ?? [];

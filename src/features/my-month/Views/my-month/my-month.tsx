@@ -16,20 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CreditCard, DollarSign, PiggyBank } from 'lucide-react';
+import { BalanceCards } from '@/features/my-month/widgets/balance-cards';
 import {
-  Wallet,
-  TrendingUp,
-  TrendingDown,
-  Calculator,
-  Calendar,
-  Filter,
-  CreditCard,
-  DollarSign,
-  PiggyBank,
-  Pencil,
-} from 'lucide-react';
-import { BalanceCard } from '@/components/my-month';
-import { AppOnboarding, type OnboardingModalCallbacks } from '@/components/onboarding';
+  AppOnboarding,
+  type OnboardingModalCallbacks,
+} from '@/components/onboarding';
 import { useAppDispatch, useAppSelector } from '@/Redux/store/hooks';
 import { selectUser } from '@/Redux/features/auth';
 import {
@@ -54,7 +46,6 @@ import {
 import {
   loadTransactions,
   deleteTransaction,
-  loadMonthlyLiquidity,
 } from '@/Redux/features/my-month/my-month-thunks';
 import { deleteSavingsTransaction } from '@/Redux/features/my-month/savings-thunks';
 import {
@@ -102,7 +93,7 @@ const MyMonth = () => {
   const monthResetDay = userConfig?.monthResetDay || 1;
   const currentPeriod = calculateMonthPeriod(
     new Date(selectedYear, selectedMonth, 15),
-    monthResetDay
+    monthResetDay,
   );
 
   // Usar la liquidez inicial del nuevo sistema Redux
@@ -132,7 +123,7 @@ const MyMonth = () => {
         initializeSelectedMonth({
           month: currentDisplay.month,
           year: currentDisplay.year,
-        })
+        }),
       );
     }
   }, [userConfig?.monthResetDay, isInitialized, dispatch]);
@@ -145,7 +136,7 @@ const MyMonth = () => {
         loadTransactions({
           userId: user.uid,
           monthPeriod: currentPeriod,
-        })
+        }),
       )
         .then(() => {
           // Actualizar balances después de cargar transacciones
@@ -153,7 +144,7 @@ const MyMonth = () => {
             updateMonthlyBalances({
               userId: user.uid,
               monthPeriod: currentPeriod,
-            })
+            }),
           );
         })
         .catch((error: unknown) => {
@@ -165,7 +156,7 @@ const MyMonth = () => {
           userId: user.uid,
           monthPeriod: currentPeriod,
           dayOfMonth: userConfig.monthResetDay,
-        })
+        }),
       ).catch((error: unknown) => {
         console.error('Error al cargar estado de liquidez:', error);
       });
@@ -175,7 +166,7 @@ const MyMonth = () => {
         loadInitialLiquidity({
           userId: user.uid,
           monthPeriod: currentPeriod,
-        })
+        }),
       ).catch((error: unknown) => {
         console.error('Error al cargar liquidez inicial:', error);
       });
@@ -199,7 +190,10 @@ const MyMonth = () => {
     setShowSavingsModal(true);
   };
 
-  const handleDeleteTransaction = async (transactionId: string, transactionType?: string) => {
+  const handleDeleteTransaction = async (
+    transactionId: string,
+    transactionType?: string,
+  ) => {
     if (!user?.uid) return;
     const confirmed = await confirm.showConfirm({
       title: 'Eliminar Transacción',
@@ -218,12 +212,12 @@ const MyMonth = () => {
       } else {
         await dispatch(deleteTransaction(transactionId)).unwrap();
       }
-      
+
       await dispatch(
         loadTransactions({
           userId: user.uid,
           monthPeriod: currentPeriod,
-        })
+        }),
       ).unwrap();
       // Actualizar balances después de eliminar
       if (userConfig) {
@@ -231,7 +225,7 @@ const MyMonth = () => {
           updateMonthlyBalances({
             userId: user.uid,
             monthPeriod: currentPeriod,
-          })
+          }),
         ).unwrap();
       }
     } catch (error) {
@@ -282,14 +276,14 @@ const MyMonth = () => {
   const pendingFixedExpenses = expectedFixedExpensesForMonth
     .filter((fe) => {
       return !transactions.some(
-        (t) => t.type === 'fixed_expense' && t.fixedExpenseId === fe.id
+        (t) => t.type === 'fixed_expense' && t.fixedExpenseId === fe.id,
       );
     })
     .map((fe) => {
       const transactionDate = new Date(
         selectedYear,
         selectedMonth,
-        fe.dayOfMonth
+        fe.dayOfMonth,
       );
       return {
         id: `pending-fe-${fe.id}`,
@@ -307,14 +301,14 @@ const MyMonth = () => {
   const pendingExpectedIncomes = expectedIncomesForMonth
     .filter((ei) => {
       return !transactions.some(
-        (t) => t.type === 'expected_income' && t.expectedIncomeId === ei.id
+        (t) => t.type === 'expected_income' && t.expectedIncomeId === ei.id,
       );
     })
     .map((ei) => {
       const transactionDate = new Date(
         selectedYear,
         selectedMonth,
-        ei.dayOfMonth
+        ei.dayOfMonth,
       );
       return {
         id: `pending-ei-${ei.id}`,
@@ -370,7 +364,7 @@ const MyMonth = () => {
   // Calcular ingresos totales: suma de unexpected_income y expected_income
   const totalIncomes = mappedTransactions
     .filter(
-      (t) => t.type === 'unexpected_income' || t.type === 'expected_income'
+      (t) => t.type === 'unexpected_income' || t.type === 'expected_income',
     )
     .reduce((sum, t) => sum + (t.value ?? 0), 0);
 
@@ -380,7 +374,8 @@ const MyMonth = () => {
     .reduce((sum, t) => sum + (t.value ?? 0), 0);
 
   // Calcular balance final: lo que tenía + ingresos - gastos - ahorros
-  const finalBalance = displayLiquidity + totalIncomes - totalExpenses - totalSavings;
+  const finalBalance =
+    displayLiquidity + totalIncomes - totalExpenses - totalSavings;
 
   const currency = userConfig?.currency || 'COP';
 
@@ -417,43 +412,45 @@ const MyMonth = () => {
     setEditingTransaction(null);
   }, []);
 
-  const onboardingModalCallbacks: OnboardingModalCallbacks = useMemo(() => ({
-    onOpenLiquidityModal: () => setShowLiquidityModal(true),
-    onOpenExpenseModal: () => {
-      setEditingTransaction(null);
-      setShowExpenseModal(true);
-    },
-    onOpenIncomeModal: () => {
-      setEditingTransaction(null);
-      setShowIncomeModal(true);
-    },
-    onOpenSavingsModal: () => {
-      setEditingTransaction(null);
-      setShowSavingsModal(true);
-    },
-    onCloseAllModals: closeAllModals,
-  }), [closeAllModals]);
+  const onboardingModalCallbacks: OnboardingModalCallbacks = useMemo(
+    () => ({
+      onOpenLiquidityModal: () => setShowLiquidityModal(true),
+      onOpenExpenseModal: () => {
+        setEditingTransaction(null);
+        setShowExpenseModal(true);
+      },
+      onOpenIncomeModal: () => {
+        setEditingTransaction(null);
+        setShowIncomeModal(true);
+      },
+      onOpenSavingsModal: () => {
+        setEditingTransaction(null);
+        setShowSavingsModal(true);
+      },
+      onCloseAllModals: closeAllModals,
+    }),
+    [closeAllModals],
+  );
 
   return (
-    <div className='container mx-auto px-4 py-8'>
+    <div className='container mx-auto  sm:px-4 py-2 sm:py-4 '>
       {/* Onboarding Tour */}
-      <AppOnboarding page='my-month' modalCallbacks={onboardingModalCallbacks} />
+      <AppOnboarding
+        page='my-month'
+        modalCallbacks={onboardingModalCallbacks}
+      />
 
-      {/* Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8'>
-        <div>
-          <h1 className='text-3xl font-bold'>Mi Mes</h1>
-          <div className='flex items-center gap-2 text-muted-foreground mt-1'>
-            <Calendar className='w-4 h-4' />
-            <span>
-              {displayMonthName} {selectedYear}
-            </span>
-          </div>
-        </div>
-        <div className='flex flex-wrap gap-2'>
+      {/* Header inline con botones */}
+      <div className='flex items-center justify-between gap-2 mb-3'>
+        <h1 className='text-lg sm:text-xl font-bold text-slate-800'>
+          {displayMonthName} {selectedYear}
+        </h1>
+        <div className='flex items-center gap-1.5'>
           <Button
             variant='outline'
+            size='sm'
             data-tour='add-expense-btn'
+            className='h-8 px-2 sm:px-3 text-xs'
             onClick={() => {
               if (user?.uid && fixedExpenses.length === 0) {
                 dispatch(loadFixedExpenses(user.uid));
@@ -462,112 +459,81 @@ const MyMonth = () => {
               setShowExpenseModal(true);
             }}
           >
-            <CreditCard className='w-4 h-4 mr-2' />
-            <span className='hidden sm:inline'>Agregar</span> Gasto
+            <CreditCard className='w-3.5 h-3.5 sm:mr-1' />
+            <span className='hidden sm:inline'>Gasto</span>
           </Button>
           <Button
             variant='outline'
+            size='sm'
             data-tour='add-income-btn'
+            className='h-8 px-2 sm:px-3 text-xs'
             onClick={() => handleOpenIncomeModal()}
           >
-            <DollarSign className='w-4 h-4 mr-2' />
-            <span className='hidden sm:inline'>Agregar</span> Ingreso
+            <DollarSign className='w-3.5 h-3.5 sm:mr-1' />
+            <span className='hidden sm:inline'>Ingreso</span>
           </Button>
           <Button
             variant='outline'
+            size='sm'
             data-tour='add-savings-btn'
+            className='h-8 px-2 sm:px-3 text-xs'
             onClick={() => handleOpenSavingsModal()}
           >
-            <PiggyBank className='w-4 h-4 mr-2' />
-            <span className='hidden sm:inline'>Agregar</span> Ahorro
+            <PiggyBank className='w-3.5 h-3.5 sm:mr-1' />
+            <span className='hidden sm:inline'>Ahorro</span>
           </Button>
         </div>
       </div>
 
       {/* Balance Cards */}
-      <div className='grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8'>
-        <div className='relative' data-tour='liquidity-card'>
-          <BalanceCard
-            title='Liquidez Inicial'
-            amount={displayLiquidity}
-            icon={<Wallet className='w-5 h-5 text-foreground' />}
-            subtitle='Inicio del período'
-          />
-          <button
-            onClick={() => setShowLiquidityModal(true)}
-            className='absolute top-3 right-3 p-1.5 rounded-lg hover:bg-muted/50 transition-colors'
-            title='Editar liquidez'
-          >
-            <Pencil className='w-4 h-4 text-muted-foreground' />
-          </button>
-        </div>
-        <div data-tour='income-card'>
-          <BalanceCard
-            title='Total Ingresos'
-            amount={totalIncomes}
-            icon={<TrendingUp className='w-5 h-5 text-income' />}
-            variant='income'
-            subtitle={`${
-              mappedTransactions.filter(
-                (t) =>
-                  t.type === 'expected_income' || t.type === 'unexpected_income'
-              ).length
-            } transacciones`}
-          />
-        </div>
-        <div data-tour='expense-card'>
-          <BalanceCard
-            title='Total Gastos'
-            amount={totalExpenses}
-            icon={<TrendingDown className='w-5 h-5 text-expense' />}
-            variant='expense'
-            subtitle={`${
-              mappedTransactions.filter(
-                (t) =>
-                  t.type === 'fixed_expense' || t.type === 'regular_expense'
-              ).length
-            } transacciones`}
-          />
-        </div>
-        <div data-tour='savings-card'>
-          <BalanceCard
-            title='Total Ahorros'
-            amount={totalSavings}
-            icon={<PiggyBank className='w-5 h-5 text-purple-600' />}
-            variant='savings'
-            subtitle={`${
-              mappedTransactions.filter((t) => t.type === 'savings').length
-            } transacciones`}
-          />
-        </div>
-        <div data-tour='balance-card'>
-          <BalanceCard
-            title='Balance Final'
-            amount={finalBalance}
-            icon={<Calculator className='w-5 h-5 text-primary-foreground' />}
-            variant='balance'
-            subtitle='Disponible'
-          />
-        </div>
+      <div data-tour='balance-cards'>
+        <BalanceCards
+          displayLiquidity={displayLiquidity}
+          totalExpenses={totalExpenses}
+          totalIncomes={totalIncomes}
+          totalSavings={totalSavings}
+          finalBalance={finalBalance}
+          currency={currency}
+          activeFilter={
+            activeFilter === 'all'
+              ? 'all'
+              : activeFilter === 'savings'
+                ? 'savings'
+                : activeFilter === 'expected_income' ||
+                    activeFilter === 'unexpected_income' ||
+                    activeFilter === 'incomes'
+                  ? 'incomes'
+                  : 'expenses'
+          }
+          onEditLiquidity={() => setShowLiquidityModal(true)}
+          onFilterChange={(filter) => {
+            // Mapear filtros de tarjetas a filtros de tabla
+            if (filter === 'all') setActiveFilter('all');
+            else if (filter === 'incomes') setActiveFilter('incomes');
+            else if (filter === 'expenses') setActiveFilter('expenses');
+            else if (filter === 'savings') setActiveFilter('savings');
+          }}
+        />
       </div>
 
-      {/* Transactions */}
+      {/* Transactions - Sección principal */}
       <div
-        className='glass-card rounded-2xl p-6'
+        className='bg-white rounded-xl p-3 sm:p-4 border border-slate-200 shadow-sm flex-1'
         data-tour='transactions-section'
       >
-        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6'>
-          <h2 className='text-xl font-semibold'>Transacciones</h2>
-          <div className='flex items-center gap-2'>
-            <Filter className='w-4 h-4 text-muted-foreground' />
+        <div className='flex items-center justify-between gap-2 mb-3'>
+          <h2 className='text-base font-semibold text-slate-800'>
+            Movimientos
+          </h2>
+          <div className='flex items-center gap-1.5'>
             <Select
               value={activeFilter}
               onValueChange={(value) =>
                 setActiveFilter(value as TransactionFilter)
               }
             >
-              <SelectTrigger className='w-[180px]'>
-                <SelectValue placeholder='Filtrar por tipo' />
+              <SelectTrigger className='w-[130px] sm:w-[150px] h-8 text-xs'>
+                <SelectValue placeholder='Filtrar' />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='all'>Todas</SelectItem>
@@ -621,7 +587,7 @@ const MyMonth = () => {
               loadTransactions({
                 userId: user?.uid || '',
                 monthPeriod: currentPeriod,
-              })
+              }),
             ).unwrap();
             // Actualizar balances después de guardar
             if (user?.uid && userConfig) {
@@ -629,7 +595,7 @@ const MyMonth = () => {
                 updateMonthlyBalances({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                })
+                }),
               ).unwrap();
             }
             setShowIncomeModal(false);
@@ -659,7 +625,7 @@ const MyMonth = () => {
               loadTransactions({
                 userId: user?.uid || '',
                 monthPeriod: currentPeriod,
-              })
+              }),
             ).unwrap();
             // Actualizar balances después de guardar
             if (user?.uid && userConfig) {
@@ -667,7 +633,7 @@ const MyMonth = () => {
                 updateMonthlyBalances({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                })
+                }),
               ).unwrap();
             }
             setShowSavingsModal(false);
@@ -695,7 +661,7 @@ const MyMonth = () => {
                   userId: user.uid,
                   monthPeriod: currentPeriod,
                   amount,
-                })
+                }),
               ).unwrap();
             }
             // Recargar liquidez inicial
@@ -703,7 +669,7 @@ const MyMonth = () => {
               loadInitialLiquidity({
                 userId: user?.uid || '',
                 monthPeriod: currentPeriod,
-              })
+              }),
             ).unwrap();
             // Actualizar balances después de guardar
             if (user?.uid && userConfig) {
@@ -711,7 +677,7 @@ const MyMonth = () => {
                 updateMonthlyBalances({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                })
+                }),
               ).unwrap();
             }
             setShowLiquidityModal(false);
@@ -723,7 +689,7 @@ const MyMonth = () => {
                 clearInitialLiquidity({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                })
+                }),
               ).unwrap();
             }
             setShowLiquidityModal(false);
@@ -752,7 +718,7 @@ const MyMonth = () => {
               loadTransactions({
                 userId: user?.uid || '',
                 monthPeriod: currentPeriod,
-              })
+              }),
             ).unwrap();
             // Actualizar balances después de guardar
             if (user?.uid && userConfig) {
@@ -760,7 +726,7 @@ const MyMonth = () => {
                 updateMonthlyBalances({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                })
+                }),
               ).unwrap();
             }
             setShowExpenseModal(false);

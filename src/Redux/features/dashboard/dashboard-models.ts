@@ -1,3 +1,11 @@
+// Tipo para fuentes de ahorro
+export interface SavingsSourceData {
+  id: string;
+  name: string;
+  amount: number; // Valor inicial
+  currentBalance: number; // Balance actual
+}
+
 export interface DashboardStats {
   totalBalance: number;
   totalIncomes: number;
@@ -75,6 +83,11 @@ export interface FinancialStats {
   expenseTransactionCount: number;
   savingsTransactionCount: number;
   monthCount: number;
+
+  // Datos de savings_sources (balance acumulado)
+  totalSavingsBalance: number;
+  savingsSourcesCount: number;
+  savingsSources: SavingsSourceData[];
 }
 
 export interface MonthlyFinancialData {
@@ -163,6 +176,11 @@ export interface GlobalSummary {
   lastMonth: string | null;
   totalMonths: number;
   totalTransactions: number;
+
+  // Datos de savings_sources (balance acumulado)
+  totalSavingsBalance: number;
+  savingsSourcesCount: number;
+  savingsSources: SavingsSourceData[];
 }
 
 export interface CompleteDashboard {

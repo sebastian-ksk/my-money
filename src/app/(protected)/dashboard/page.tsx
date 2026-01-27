@@ -40,6 +40,8 @@ import {
   selectExpensesByCategory,
   selectIncomesByCategory,
   selectTransactionsByPaymentMethod,
+  selectTotalSavingsBalance,
+  selectSavingsSources,
   type PeriodFilter,
 } from '@/Redux/features/dashboard';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -82,6 +84,8 @@ export default function DashboardPage() {
   const expensesByCategory = useAppSelector(selectExpensesByCategory);
   const incomesByCategory = useAppSelector(selectIncomesByCategory);
   const transactionsByPaymentMethod = useAppSelector(selectTransactionsByPaymentMethod);
+  const totalSavingsBalance = useAppSelector(selectTotalSavingsBalance);
+  const savingsSources = useAppSelector(selectSavingsSources);
 
   useEffect(() => {
     if (user?.uid && userConfig?.monthResetDay) {
@@ -157,7 +161,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards Principales */}
-      <div className='grid sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+      <div className='grid sm:grid-cols-2 lg:grid-cols-5 gap-4'>
         <StatCard
           title='Total Ingresos'
           amount={financialStats?.totalIncome || 0}
@@ -183,12 +187,20 @@ export default function DashboardPage() {
           loading={loading && !financialStats}
         />
         <StatCard
-          title='Total Ahorrado'
+          title='Ahorrado (Periodo)'
           amount={financialStats?.totalSavings || 0}
           change={financialStats?.savingsChange}
           icon={PiggyBank}
           variant='savings'
           loading={loading && !financialStats}
+        />
+        <StatCard
+          title='Total en Ahorros'
+          amount={totalSavingsBalance}
+          icon={PiggyBank}
+          variant='savings'
+          loading={loading && !financialStats}
+          subtitle={`${savingsSources.length} fuente${savingsSources.length !== 1 ? 's' : ''}`}
         />
       </div>
 
@@ -686,6 +698,55 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Fuentes de Ahorro */}
+      {savingsSources.length > 0 && (
+        <div className='glass-card rounded-2xl p-6'>
+          <div className='flex items-center justify-between mb-6'>
+            <h3 className='text-lg font-semibold'>Fuentes de Ahorro</h3>
+            <div className='flex items-center gap-2 px-3 py-1.5 rounded-full bg-savings/10'>
+              <PiggyBank className='w-4 h-4 text-savings' />
+              <span className='text-sm font-bold text-savings'>
+                {formatCurrency(totalSavingsBalance)}
+              </span>
+            </div>
+          </div>
+          <div className='grid sm:grid-cols-2 lg:grid-cols-3 gap-4'>
+            {savingsSources.map((source) => (
+              <div
+                key={source.id}
+                className='p-4 rounded-xl bg-savings/5 border border-savings/20 hover:border-savings/40 transition-colors'
+              >
+                <div className='flex items-center gap-3 mb-3'>
+                  <div className='w-10 h-10 rounded-lg bg-savings/20 flex items-center justify-center'>
+                    <PiggyBank className='w-5 h-5 text-savings' />
+                  </div>
+                  <div>
+                    <p className='font-medium'>{source.name}</p>
+                    <p className='text-xs text-muted-foreground'>
+                      Inicial: {formatCurrency(source.amount)}
+                    </p>
+                  </div>
+                </div>
+                <div className='flex items-end justify-between'>
+                  <div>
+                    <p className='text-xs text-muted-foreground'>Balance Actual</p>
+                    <p className='text-xl font-bold text-savings'>
+                      {formatCurrency(source.currentBalance)}
+                    </p>
+                  </div>
+                  {source.currentBalance > source.amount && (
+                    <div className='flex items-center gap-1 text-xs text-income'>
+                      <ArrowUpRight className='w-3 h-3' />
+                      +{formatCurrency(source.currentBalance - source.amount)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Métodos de Pago */}
       {transactionsByPaymentMethod.length > 0 && (
         <div className='glass-card rounded-2xl p-6'>
@@ -750,9 +811,10 @@ interface StatCardProps {
   icon: React.ElementType;
   variant?: 'default' | 'income' | 'expense' | 'savings';
   loading?: boolean;
+  subtitle?: string;
 }
 
-function StatCard({ title, amount, change, icon: Icon, variant = 'default', loading }: StatCardProps) {
+function StatCard({ title, amount, change, icon: Icon, variant = 'default', loading, subtitle }: StatCardProps) {
   const variantStyles = {
     default: 'glass-card',
     income: 'bg-income/10 border-income/20',
@@ -803,6 +865,7 @@ function StatCard({ title, amount, change, icon: Icon, variant = 'default', load
       <div className='mt-4'>
         <p className='text-sm text-muted-foreground'>{title}</p>
         <p className='text-2xl font-bold mt-1'>{formatCurrency(amount)}</p>
+        {subtitle && <p className='text-xs text-muted-foreground mt-0.5'>{subtitle}</p>}
       </div>
     </div>
   );

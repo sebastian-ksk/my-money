@@ -2,6 +2,14 @@ import { firestore } from '@/config/firebase-config';
 import type { MonthlyLiquidityState, Transaction } from '@/Redux/features/my-month/my-month-models';
 import { calculateMonthPeriod } from './my-month-service';
 
+// Tipo para fuentes de ahorro
+export interface SavingsSourceData {
+  id: string;
+  name: string;
+  amount: number; // Valor inicial
+  currentBalance: number; // Balance actual (currentBalance si existe, sino amount)
+}
+
 // Tipos para el dashboard
 export interface FinancialStats {
   // Totales del periodo seleccionado
@@ -43,6 +51,11 @@ export interface FinancialStats {
   expenseTransactionCount: number;
   savingsTransactionCount: number;
   monthCount: number;
+
+  // Datos de savings_sources
+  totalSavingsBalance: number; // Suma de currentBalance de todas las fuentes
+  savingsSourcesCount: number;
+  savingsSources: SavingsSourceData[];
 }
 
 export interface MonthlyFinancialData {
@@ -143,6 +156,11 @@ export interface GlobalSummary {
   lastMonth: string | null;
   totalMonths: number;
   totalTransactions: number;
+
+  // Datos de savings_sources (total acumulado en fuentes de ahorro)
+  totalSavingsBalance: number;
+  savingsSourcesCount: number;
+  savingsSources: SavingsSourceData[];
 }
 
 export interface CompleteDashboard {
@@ -279,6 +297,40 @@ const groupByPaymentMethod = (transactions: Transaction[]): TransactionsByPaymen
 };
 
 export const dashboardApiService = {
+  // ========== Obtener fuentes de ahorro con balances ==========
+  async getSavingsSources(userId: string): Promise<SavingsSourceData[]> {
+    const querySnapshot = await firestore
+      .collection('savings_sources')
+      .where('userId', '==', userId)
+      .get();
+
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name || 'Sin nombre',
+        amount: data.amount || 0,
+        // Usar currentBalance si existe, sino usar amount
+        currentBalance: data.currentBalance ?? data.amount ?? 0,
+      };
+    });
+  },
+
+  // ========== Obtener total de savings balance ==========
+  async getTotalSavingsBalance(userId: string): Promise<{
+    total: number;
+    count: number;
+    sources: SavingsSourceData[];
+  }> {
+    const sources = await this.getSavingsSources(userId);
+    const total = sources.reduce((sum, s) => sum + s.currentBalance, 0);
+    return {
+      total,
+      count: sources.length,
+      sources,
+    };
+  },
+
   // ========== Obtener datos de monthlyLiquidity para periodos ==========
   async getMonthlyLiquidityData(
     userId: string,
@@ -374,10 +426,11 @@ export const dashboardApiService = {
       previousPeriods,
     });
 
-    // Obtener datos de monthlyLiquidity y transacciones
-    const [liquidityData, transactions] = await Promise.all([
+    // Obtener datos de monthlyLiquidity, transacciones y savings_sources
+    const [liquidityData, transactions, savingsData] = await Promise.all([
       this.getMonthlyLiquidityData(userId, allPeriods),
       this.getTransactionsForPeriods(userId, allPeriods),
+      this.getTotalSavingsBalance(userId),
     ]);
 
     console.log('[Dashboard API] Data fetched:', {
@@ -462,6 +515,10 @@ export const dashboardApiService = {
       expenseTransactionCount: currentTotals.expenseCount,
       savingsTransactionCount: currentTotals.savingsCount,
       monthCount,
+      // Datos de savings_sources
+      totalSavingsBalance: savingsData.total,
+      savingsSourcesCount: savingsData.count,
+      savingsSources: savingsData.sources,
     };
   },
 
@@ -538,9 +595,10 @@ export const dashboardApiService = {
     // Obtener toda la historia (hasta 36 meses)
     const periods = getLastNMonthPeriods(36, monthResetDay);
 
-    const [liquidityData, transactions] = await Promise.all([
+    const [liquidityData, transactions, savingsData] = await Promise.all([
       this.getMonthlyLiquidityData(userId, periods),
       this.getTransactionsForPeriods(userId, periods),
+      this.getTotalSavingsBalance(userId),
     ]);
 
     if (transactions.length === 0 && liquidityData.length === 0) {
@@ -570,6 +628,10 @@ export const dashboardApiService = {
         lastMonth: null,
         totalMonths: 0,
         totalTransactions: 0,
+        // Datos de savings_sources
+        totalSavingsBalance: savingsData.total,
+        savingsSourcesCount: savingsData.count,
+        savingsSources: savingsData.sources,
       };
     }
 
@@ -684,6 +746,10 @@ export const dashboardApiService = {
       lastMonth: monthlyStats[monthlyStats.length - 1]?.period || null,
       totalMonths,
       totalTransactions: transactions.length,
+      // Datos de savings_sources
+      totalSavingsBalance: savingsData.total,
+      savingsSourcesCount: savingsData.count,
+      savingsSources: savingsData.sources,
     };
   },
 
