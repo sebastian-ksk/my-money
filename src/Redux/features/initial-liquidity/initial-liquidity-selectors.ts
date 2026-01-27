@@ -3,12 +3,14 @@ import type { RootState } from '@/Redux/store';
 export const selectInitialLiquidity = (state: RootState) =>
   state.initialLiquidity.currentLiquidity;
 
-export const selectInitialLiquidityAmount = (state: RootState) =>
-  state.initialLiquidity.currentLiquidity?.amount ??
-  state.initialLiquidity.calculatedAmount;
+export const selectEffectiveAmount = (state: RootState) =>
+  state.initialLiquidity.effectiveAmount;
+
+export const selectRealAmount = (state: RootState) =>
+  state.initialLiquidity.currentLiquidity?.realAmount ?? null;
 
 export const selectCalculatedAmount = (state: RootState) =>
-  state.initialLiquidity.calculatedAmount;
+  state.initialLiquidity.currentLiquidity?.calculatedAmount ?? 0;
 
 export const selectWasCalculated = (state: RootState) =>
   state.initialLiquidity.wasCalculated;
@@ -22,14 +24,15 @@ export const selectInitialLiquidityLoading = (state: RootState) =>
 export const selectInitialLiquidityError = (state: RootState) =>
   state.initialLiquidity.error;
 
-// Selector para obtener la liquidez efectiva (guardada o calculada)
+// Selector para obtener la liquidez efectiva con toda la info
 export const selectEffectiveInitialLiquidity = (state: RootState) => {
-  const { currentLiquidity, calculatedAmount, wasCalculated } =
+  const { currentLiquidity, effectiveAmount, wasCalculated } =
     state.initialLiquidity;
 
   return {
-    amount: currentLiquidity?.amount ?? calculatedAmount,
-    isManual: currentLiquidity?.isManual ?? false,
+    amount: effectiveAmount,
+    realAmount: currentLiquidity?.realAmount ?? null,
+    calculatedAmount: currentLiquidity?.calculatedAmount ?? 0,
     wasCalculated,
     hasRecord: currentLiquidity !== null,
   };

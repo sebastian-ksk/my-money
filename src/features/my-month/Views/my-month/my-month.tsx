@@ -61,7 +61,7 @@ import { selectEffectiveInitialLiquidity } from '@/Redux/features/initial-liquid
 import {
   loadInitialLiquidity,
   saveInitialLiquidity,
-  deleteInitialLiquidity,
+  clearInitialLiquidity,
 } from '@/Redux/features/initial-liquidity/initial-liquidity-thunks';
 import {
   calculateMonthPeriod,
@@ -172,7 +172,6 @@ const MyMonth = () => {
         loadInitialLiquidity({
           userId: user.uid,
           monthPeriod: currentPeriod,
-          calculate: true,
         })
       ).catch((error: unknown) => {
         console.error('Error al cargar liquidez inicial:', error);
@@ -662,6 +661,7 @@ const MyMonth = () => {
           monthlyLiquidity={monthlyLiquidity}
           currency={currency}
           initialLiquidityAmount={displayLiquidity}
+          calculatedAmount={initialLiquidityData.calculatedAmount}
           wasCalculated={initialLiquidityData.wasCalculated}
           onClose={() => setShowLiquidityModal(false)}
           onSave={async (amount?: number) => {
@@ -672,7 +672,6 @@ const MyMonth = () => {
                   userId: user.uid,
                   monthPeriod: currentPeriod,
                   amount,
-                  isManual: true,
                 })
               ).unwrap();
             }
@@ -681,7 +680,6 @@ const MyMonth = () => {
               loadInitialLiquidity({
                 userId: user?.uid || '',
                 monthPeriod: currentPeriod,
-                calculate: true,
               })
             ).unwrap();
             // Actualizar balances después de guardar
@@ -697,20 +695,12 @@ const MyMonth = () => {
             setShowLiquidityModal(false);
           }}
           onDelete={async () => {
-            // Eliminar liquidez inicial usando la nueva API
+            // Limpiar realAmount (volver a usar calculado)
             if (user?.uid) {
               await dispatch(
-                deleteInitialLiquidity({
+                clearInitialLiquidity({
                   userId: user.uid,
                   monthPeriod: currentPeriod,
-                })
-              ).unwrap();
-              // Recargar para obtener el valor calculado
-              await dispatch(
-                loadInitialLiquidity({
-                  userId: user.uid,
-                  monthPeriod: currentPeriod,
-                  calculate: true,
                 })
               ).unwrap();
             }

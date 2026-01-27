@@ -14,6 +14,7 @@ interface LiquidityModalProps {
   monthlyLiquidity: MonthlyLiquidityState | null;
   currency: string;
   initialLiquidityAmount?: number;
+  calculatedAmount?: number;
   wasCalculated?: boolean;
   onClose: () => void;
   onSave: (amount?: number) => void;
@@ -24,6 +25,7 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
   monthPeriod,
   currency,
   initialLiquidityAmount = 0,
+  calculatedAmount = 0,
   wasCalculated = false,
   onClose,
   onSave,
@@ -95,7 +97,7 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
 
       {/* Valor actual */}
       <div className='mb-6 p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200'>
-        <div className='text-xs text-blue-600 mb-1'>Liquidez Inicial</div>
+        <div className='text-xs text-blue-600 mb-1'>Liquidez Inicial (Valor Usado)</div>
         <div className='text-2xl font-bold text-blue-900'>
           {formatCurrency(initialLiquidityAmount, currency)}
         </div>
@@ -105,7 +107,7 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
               <svg className='w-3 h-3' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' />
               </svg>
-              Calculado automáticamente (mes anterior + ingresos - gastos - ahorros)
+              Calculado automáticamente
             </span>
           ) : (
             <span className='flex items-center gap-1'>
@@ -117,6 +119,23 @@ const LiquidityModal: React.FC<LiquidityModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Mostrar valor calculado cuando hay valor manual */}
+      {!wasCalculated && calculatedAmount !== initialLiquidityAmount && (
+        <div className='mb-6 p-3 bg-zinc-50 rounded-lg border border-zinc-200'>
+          <div className='flex justify-between items-center'>
+            <div>
+              <div className='text-xs text-zinc-500'>Valor Calculado Automático</div>
+              <div className='text-lg font-medium text-zinc-700'>
+                {formatCurrency(calculatedAmount, currency)}
+              </div>
+            </div>
+            <div className='text-xs text-zinc-500'>
+              Diferencia: {formatCurrency(initialLiquidityAmount - calculatedAmount, currency)}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Formulario de edición */}
       {isEditing ? (

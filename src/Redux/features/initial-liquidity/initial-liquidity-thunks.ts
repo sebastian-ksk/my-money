@@ -1,6 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { initialLiquidityService } from '@/services/Firebase/initial-liquidity-service';
-import type { InitialLiquidity, InitialLiquidityResult } from './initial-liquidity-models';
+import type { InitialLiquidityResult } from './initial-liquidity-models';
 
 // ========== Cargar liquidez inicial (obtener o calcular) ==========
 export const loadInitialLiquidity = createAsyncThunk(
@@ -9,32 +9,18 @@ export const loadInitialLiquidity = createAsyncThunk(
     {
       userId,
       monthPeriod,
-      calculate = true,
     }: {
       userId: string;
       monthPeriod: string;
-      calculate?: boolean;
     },
     { rejectWithValue }
   ) => {
     try {
-      if (calculate) {
-        const result = await initialLiquidityService.getOrCalculateInitialLiquidity(
-          userId,
-          monthPeriod
-        );
-        return result;
-      } else {
-        const liquidity = await initialLiquidityService.getInitialLiquidity(
-          userId,
-          monthPeriod
-        );
-        return {
-          liquidity,
-          calculatedAmount: liquidity?.amount ?? 0,
-          wasCalculated: false,
-        } as InitialLiquidityResult;
-      }
+      const result = await initialLiquidityService.getOrCalculateInitialLiquidity(
+        userId,
+        monthPeriod
+      );
+      return result;
     } catch (error: unknown) {
       console.error('Error en loadInitialLiquidity:', error);
       return rejectWithValue(
@@ -44,7 +30,7 @@ export const loadInitialLiquidity = createAsyncThunk(
   }
 );
 
-// ========== Crear o actualizar liquidez inicial ==========
+// ========== Guardar realAmount (valor manual del usuario) ==========
 export const saveInitialLiquidity = createAsyncThunk(
   'initialLiquidity/save',
   async (
@@ -52,23 +38,24 @@ export const saveInitialLiquidity = createAsyncThunk(
       userId,
       monthPeriod,
       amount,
-      isManual = true,
     }: {
       userId: string;
       monthPeriod: string;
       amount: number;
-      isManual?: boolean;
     },
     { rejectWithValue }
   ) => {
     try {
-      const liquidity = await initialLiquidityService.createOrUpdateInitialLiquidity(
+      const liquidity = await initialLiquidityService.updateRealAmount(
         userId,
         monthPeriod,
-        amount,
-        isManual
+        amount
       );
-      return liquidity;
+      return {
+        liquidity,
+        effectiveAmount: amount,
+        wasCalculated: false,
+      } as InitialLiquidityResult;
     } catch (error: unknown) {
       console.error('Error en saveInitialLiquidity:', error);
       return rejectWithValue(
@@ -78,57 +65,33 @@ export const saveInitialLiquidity = createAsyncThunk(
   }
 );
 
-// ========== Actualizar liquidez inicial ==========
-export const updateInitialLiquidity = createAsyncThunk(
-  'initialLiquidity/update',
+// ========== Limpiar realAmount (volver a usar calculado) ==========
+export const clearInitialLiquidity = createAsyncThunk(
+  'initialLiquidity/clear',
   async (
     {
       userId,
       monthPeriod,
-      amount,
     }: {
       userId: string;
       monthPeriod: string;
-      amount: number;
     },
     { rejectWithValue }
   ) => {
     try {
-      const liquidity = await initialLiquidityService.updateInitialLiquidity(
+      const liquidity = await initialLiquidityService.clearRealAmount(
         userId,
-        monthPeriod,
-        amount
+        monthPeriod
       );
-      return liquidity;
+      return {
+        liquidity,
+        effectiveAmount: liquidity.calculatedAmount,
+        wasCalculated: true,
+      } as InitialLiquidityResult;
     } catch (error: unknown) {
-      console.error('Error en updateInitialLiquidity:', error);
+      console.error('Error en clearInitialLiquidity:', error);
       return rejectWithValue(
-        (error as Error).message || 'Error al actualizar liquidez inicial'
-      );
-    }
-  }
-);
-
-// ========== Eliminar liquidez inicial ==========
-export const deleteInitialLiquidity = createAsyncThunk(
-  'initialLiquidity/delete',
-  async (
-    {
-      userId,
-      monthPeriod,
-    }: {
-      userId: string;
-      monthPeriod: string;
-    },
-    { rejectWithValue }
-  ) => {
-    try {
-      await initialLiquidityService.deleteInitialLiquidity(userId, monthPeriod);
-      return { userId, monthPeriod };
-    } catch (error: unknown) {
-      console.error('Error en deleteInitialLiquidity:', error);
-      return rejectWithValue(
-        (error as Error).message || 'Error al eliminar liquidez inicial'
+        (error as Error).message || 'Error al limpiar liquidez inicial'
       );
     }
   }
@@ -162,7 +125,7 @@ export const loadInitialLiquidityHistory = createAsyncThunk(
   }
 );
 
-// ========== Recalcular y guardar liquidez inicial ==========
+// ========== Recalcular el calculatedAmount ==========
 export const recalculateInitialLiquidity = createAsyncThunk(
   'initialLiquidity/recalculate',
   async (
@@ -176,11 +139,16 @@ export const recalculateInitialLiquidity = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const liquidity = await initialLiquidityService.recalculateAndSaveInitialLiquidity(
+      const liquidity = await initialLiquidityService.recalculateInitialLiquidity(
         userId,
         monthPeriod
       );
-      return liquidity;
+      const effectiveAmount = liquidity.realAmount ?? liquidity.calculatedAmount;
+      return {
+        liquidity,
+        effectiveAmount,
+        wasCalculated: liquidity.realAmount === null,
+      } as InitialLiquidityResult;
     } catch (error: unknown) {
       console.error('Error en recalculateInitialLiquidity:', error);
       return rejectWithValue(

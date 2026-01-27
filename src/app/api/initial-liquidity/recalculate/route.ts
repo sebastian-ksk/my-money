@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initialLiquidityService } from '@/services/Firebase/initial-liquidity-service';
 
-// POST - Recalcular y guardar liquidez inicial basado en el mes anterior
+// POST - Recalcular el calculatedAmount basado en el mes anterior
+// No afecta el realAmount si existe
 // Body: { userId, monthPeriod }
 export async function POST(request: NextRequest) {
   try {
@@ -15,16 +16,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const liquidity =
-      await initialLiquidityService.recalculateAndSaveInitialLiquidity(
-        userId,
-        monthPeriod
-      );
+    const liquidity = await initialLiquidityService.recalculateInitialLiquidity(
+      userId,
+      monthPeriod
+    );
+
+    const effectiveAmount = liquidity.realAmount ?? liquidity.calculatedAmount;
 
     return NextResponse.json({
       success: true,
-      data: liquidity,
-      message: 'Liquidez inicial recalculada correctamente',
+      data: {
+        liquidity,
+        effectiveAmount,
+        wasCalculated: liquidity.realAmount === null,
+      },
+      message: 'Valor calculado actualizado correctamente',
     });
   } catch (error) {
     console.error('Error en POST /api/initial-liquidity/recalculate:', error);

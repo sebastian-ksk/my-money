@@ -2,8 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 import {
   loadInitialLiquidity,
   saveInitialLiquidity,
-  updateInitialLiquidity,
-  deleteInitialLiquidity,
+  clearInitialLiquidity,
   loadInitialLiquidityHistory,
   recalculateInitialLiquidity,
 } from './initial-liquidity-thunks';
@@ -12,8 +11,8 @@ import type { InitialLiquidityState } from './initial-liquidity-models';
 
 const initialState: InitialLiquidityState = {
   currentLiquidity: null,
-  calculatedAmount: 0,
-  wasCalculated: false,
+  effectiveAmount: 0,
+  wasCalculated: true,
   history: [],
   loading: false,
   error: null,
@@ -38,53 +37,40 @@ const initialLiquiditySlice = createSlice({
       .addCase(loadInitialLiquidity.fulfilled, (state, action) => {
         state.loading = false;
         state.currentLiquidity = action.payload.liquidity;
-        state.calculatedAmount = action.payload.calculatedAmount;
+        state.effectiveAmount = action.payload.effectiveAmount;
         state.wasCalculated = action.payload.wasCalculated;
       })
       .addCase(loadInitialLiquidity.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-      // Save Initial Liquidity
+      // Save Initial Liquidity (set realAmount)
       .addCase(saveInitialLiquidity.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(saveInitialLiquidity.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentLiquidity = action.payload;
-        state.calculatedAmount = action.payload.amount;
+        state.currentLiquidity = action.payload.liquidity;
+        state.effectiveAmount = action.payload.effectiveAmount;
         state.wasCalculated = false;
       })
       .addCase(saveInitialLiquidity.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-      // Update Initial Liquidity
-      .addCase(updateInitialLiquidity.pending, (state) => {
+      // Clear Initial Liquidity (remove realAmount, use calculated)
+      .addCase(clearInitialLiquidity.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(updateInitialLiquidity.fulfilled, (state, action) => {
+      .addCase(clearInitialLiquidity.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentLiquidity = action.payload;
-        state.calculatedAmount = action.payload.amount;
-      })
-      .addCase(updateInitialLiquidity.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      // Delete Initial Liquidity
-      .addCase(deleteInitialLiquidity.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(deleteInitialLiquidity.fulfilled, (state) => {
-        state.loading = false;
-        state.currentLiquidity = null;
+        state.currentLiquidity = action.payload.liquidity;
+        state.effectiveAmount = action.payload.effectiveAmount;
         state.wasCalculated = true;
       })
-      .addCase(deleteInitialLiquidity.rejected, (state, action) => {
+      .addCase(clearInitialLiquidity.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
@@ -108,9 +94,9 @@ const initialLiquiditySlice = createSlice({
       })
       .addCase(recalculateInitialLiquidity.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentLiquidity = action.payload;
-        state.calculatedAmount = action.payload.amount;
-        state.wasCalculated = false;
+        state.currentLiquidity = action.payload.liquidity;
+        state.effectiveAmount = action.payload.effectiveAmount;
+        state.wasCalculated = action.payload.wasCalculated;
       })
       .addCase(recalculateInitialLiquidity.rejected, (state, action) => {
         state.loading = false;

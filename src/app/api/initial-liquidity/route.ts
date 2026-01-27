@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initialLiquidityService } from '@/services/Firebase/initial-liquidity-service';
 
 // GET - Obtener liquidez inicial de un mes
-// Query params: userId, monthPeriod, calculate (optional, default true)
+// Query params: userId, monthPeriod
+// Siempre retorna el documento con realAmount y calculatedAmount
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const monthPeriod = searchParams.get('monthPeriod');
-    const calculate = searchParams.get('calculate') !== 'false'; // default true
 
     if (!userId || !monthPeriod) {
       return NextResponse.json(
@@ -17,34 +17,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (calculate) {
-      // Obtener o calcular si no existe
-      const result =
-        await initialLiquidityService.getOrCalculateInitialLiquidity(
-          userId,
-          monthPeriod
-        );
+    // Obtener o crear con valor calculado
+    const result = await initialLiquidityService.getOrCalculateInitialLiquidity(
+      userId,
+      monthPeriod
+    );
 
-      return NextResponse.json({
-        success: true,
-        data: result,
-      });
-    } else {
-      // Solo obtener sin calcular
-      const liquidity = await initialLiquidityService.getInitialLiquidity(
-        userId,
-        monthPeriod
-      );
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          liquidity,
-          calculatedAmount: liquidity?.amount ?? null,
-          wasCalculated: false,
-        },
-      });
-    }
+    return NextResponse.json({
+      success: true,
+      data: result,
+    });
   } catch (error) {
     console.error('Error en GET /api/initial-liquidity:', error);
     return NextResponse.json(
@@ -54,34 +36,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Crear o actualizar liquidez inicial
-// Body: { userId, monthPeriod, amount, isManual? }
+// POST - Establecer el realAmount (valor manual del usuario)
+// Body: { userId, monthPeriod, realAmount }
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, monthPeriod, amount, isManual = true } = body;
+    const { userId, monthPeriod, realAmount } = body;
 
-    if (!userId || !monthPeriod || amount === undefined) {
+    if (!userId || !monthPeriod || realAmount === undefined) {
       return NextResponse.json(
-        { error: 'userId, monthPeriod y amount son requeridos' },
+        { error: 'userId, monthPeriod y realAmount son requeridos' },
         { status: 400 }
       );
     }
 
-    if (typeof amount !== 'number' || isNaN(amount)) {
+    if (typeof realAmount !== 'number' || isNaN(realAmount)) {
       return NextResponse.json(
-        { error: 'amount debe ser un número válido' },
+        { error: 'realAmount debe ser un número válido' },
         { status: 400 }
       );
     }
 
-    const liquidity =
-      await initialLiquidityService.createOrUpdateInitialLiquidity(
-        userId,
-        monthPeriod,
-        amount,
-        isManual
-      );
+    const liquidity = await initialLiquidityService.updateRealAmount(
+      userId,
+      monthPeriod,
+      realAmount
+    );
 
     return NextResponse.json({
       success: true,
@@ -90,37 +70,37 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error en POST /api/initial-liquidity:', error);
     return NextResponse.json(
-      { error: 'Error al crear/actualizar liquidez inicial' },
+      { error: 'Error al guardar liquidez inicial' },
       { status: 500 }
     );
   }
 }
 
-// PUT - Actualizar liquidez inicial
-// Body: { userId, monthPeriod, amount }
+// PUT - Actualizar el realAmount
+// Body: { userId, monthPeriod, realAmount }
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, monthPeriod, amount } = body;
+    const { userId, monthPeriod, realAmount } = body;
 
-    if (!userId || !monthPeriod || amount === undefined) {
+    if (!userId || !monthPeriod || realAmount === undefined) {
       return NextResponse.json(
-        { error: 'userId, monthPeriod y amount son requeridos' },
+        { error: 'userId, monthPeriod y realAmount son requeridos' },
         { status: 400 }
       );
     }
 
-    if (typeof amount !== 'number' || isNaN(amount)) {
+    if (typeof realAmount !== 'number' || isNaN(realAmount)) {
       return NextResponse.json(
-        { error: 'amount debe ser un número válido' },
+        { error: 'realAmount debe ser un número válido' },
         { status: 400 }
       );
     }
 
-    const liquidity = await initialLiquidityService.updateInitialLiquidity(
+    const liquidity = await initialLiquidityService.updateRealAmount(
       userId,
       monthPeriod,
-      amount
+      realAmount
     );
 
     return NextResponse.json({
@@ -136,7 +116,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Eliminar liquidez inicial
+// DELETE - Limpiar el realAmount (volver a usar calculado)
 // Query params: userId, monthPeriod
 export async function DELETE(request: NextRequest) {
   try {
@@ -151,16 +131,21 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await initialLiquidityService.deleteInitialLiquidity(userId, monthPeriod);
+    // Limpiar realAmount, mantener documento con calculatedAmount
+    const liquidity = await initialLiquidityService.clearRealAmount(
+      userId,
+      monthPeriod
+    );
 
     return NextResponse.json({
       success: true,
-      message: 'Liquidez inicial eliminada correctamente',
+      data: liquidity,
+      message: 'Valor manual eliminado, usando valor calculado',
     });
   } catch (error) {
     console.error('Error en DELETE /api/initial-liquidity:', error);
     return NextResponse.json(
-      { error: 'Error al eliminar liquidez inicial' },
+      { error: 'Error al limpiar liquidez inicial' },
       { status: 500 }
     );
   }
