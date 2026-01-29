@@ -272,7 +272,7 @@ export default function FixedExpensesSection() {
                       <>
                         <span>•</span>
                         <span className='text-xs'>
-                          {expense.months
+                          {[...expense.months]
                             .sort((a, b) => a - b)
                             .map((m) => monthNames[m - 1])
                             .join(', ')}
